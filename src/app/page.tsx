@@ -37,10 +37,10 @@ export default function LandingPage() {
             Start building
           </Link>
           <Link
-            href="/login"
+            href="/preview"
             className="btn border border-white/15 px-5 py-2.5 text-white hover:bg-white/10"
           >
-            I have an account
+            See a live example
           </Link>
         </div>
       </section>

@@ -19,6 +19,13 @@ see. It never ships executable code. That single decision is what makes the rest
 possible: apps can't break each other, security is enforced once for all of
 them, and an app is a small, diffable, versionable, sellable artifact.
 
+## One login, one dashboard
+
+Everything a user builds lives behind a single account. Apps they install, the
+content inside them, the design of their page and the layouts they publish are
+all reached from one dashboard — a SaaS platform where the features are things
+you choose rather than things you are given.
+
 ## The three faces of an app
 
 An app declares up to three surfaces, and many have only one or two:
@@ -33,17 +40,51 @@ Every account also gets one public profile page at `/u/<handle>` that stacks the
 public surfaces of whatever the owner switched on — a Linktree-style listing
 built from real, live apps rather than static links.
 
+## Reusable layouts
+
+A **layout** is the second reusable artifact in the ecosystem, alongside apps:
+a theme plus an ordered plan of blocks. Publish the design you built and anyone
+can apply it — they get the same look and the same blocks in the same order,
+filled with their own content. Applying a layout is additive: missing blocks are
+installed, existing ones are repositioned, and nothing you already have is
+deleted. Only the shape travels; no records, settings or submissions ever do.
+
+Six layouts ship with the platform (Real Estate Agent, Restaurant, DJ &
+Nightlife, Creator, Trades & Services, Dark Hub). A user-published layout goes
+through the exact same validation as a built-in one.
+
+## Designing the page
+
+Owners restyle their whole public page from the dashboard: six starting presets,
+then colour, block style, corners, typeface, button shape, spacing, page width,
+header layout and heading treatment — with a live preview built from the real
+components. Each block also picks its own display variant (a listing block can
+be a grid, cards or a list; links can be buttons or a grid) without touching the
+module itself, so the same app looks different on two different pages.
+
+This is a wide set of **validated** options rather than free-form CSS. That is a
+deliberate trade: arbitrary styling from thousands of accounts would be an
+injection surface and would make every third-party block unsafe to render on a
+shared page. The theme compiles to CSS custom properties, and the runtime is the
+only thing that ever writes markup.
+
 ## What is here today
 
 - **Auth** — email/password sign-up, with a profile row created automatically.
 - **The module spec** (`src/lib/modules/spec.ts`) — the contract every app is
   validated against, ours and third parties' alike.
 - **The runtime** — generates a complete admin UI (list, add, edit, reorder,
-  delete), a settings form, and four public templates from a manifest alone.
-- **Dashboard** — installed apps, the store, per-app admin, public page settings.
-- **Public layer** — the profile page and a standalone page per app, with QR
-  links for each.
-- **Three working apps** — QR Menu, Song Requests, Link Hub.
+  delete) and a settings form from a manifest, and renders ten public templates
+  across their display variants.
+- **Dashboard** — installed apps, the store with an install-time permission
+  prompt, per-app admin, and a page studio (details, blocks, design, layouts).
+- **Public layer** — a themed profile page at `/u/<handle>` stacking the blocks
+  an owner switched on, plus a standalone page and QR link per block.
+- **Ten working apps** — Listings, Action Buttons, Social Links, Enquiry Form,
+  Gallery, Video, FAQ, Link Hub, QR Menu, Song Requests.
+- **A live example** at `/preview` — the real public renderer with sample
+  content and a theme switcher, so the front end can be judged before any
+  database exists.
 - **Security** — see below.
 - **Marketplace schema** — `module_listings` carries author, version, price and
   status from day one, so publishing and selling never need a schema retrofit.
@@ -71,6 +112,12 @@ kept in the database, not in application code:
   a field the module did not declare.
 - **URLs are restricted to http(s)**, so a link block can never carry
   `javascript:` or `data:`.
+- **Only YouTube and Vimeo can be embedded**, and only after the URL is reduced
+  to an id the platform builds the iframe `src` from itself. No owner can point
+  a frame at an arbitrary origin.
+- **Themes are named options, not CSS.** Every value is schema-checked before it
+  reaches a stylesheet, and an invalid stored theme falls back to the default
+  rather than breaking a page.
 - **IP addresses are never stored** — rate limiting uses a per-app salted hash.
 
 ## Running it
@@ -84,12 +131,13 @@ cp .env.example .env.local     # fill in the URL and anon key
 # 2. Apply the schema (Supabase SQL editor, or the CLI):
 #    supabase/migrations/0001_foundation.sql
 #    supabase/migrations/0002_security.sql
+#    supabase/migrations/0003_pages.sql
 
 npm run dev
 ```
 
 ```bash
-npm test          # runtime and manifest validation
+npm test          # runtime, manifest, theme and layout validation
 npm run typecheck
 npm run build
 ```
@@ -97,15 +145,20 @@ npm run build
 ## Project layout
 
 ```
-src/lib/modules/spec.ts        The manifest contract — the heart of the platform
-src/lib/modules/registry.ts    Validated catalogue of available apps
-src/lib/runtime/values.ts      Server-side validation for every write
-src/components/runtime/        Generates admin UI from a manifest
-src/components/public/         The four public templates the runtime owns
-src/modules/<id>/manifest.ts   The apps themselves — declarations only
-src/app/dashboard/             Owner-facing screens and server actions
-src/app/u/[handle]/            The public layer
-supabase/migrations/           Schema and Row Level Security
+src/lib/modules/spec.ts          The manifest contract — the heart of the platform
+src/lib/modules/registry.ts      Validated catalogue of available apps
+src/lib/runtime/values.ts        Server-side validation for every write
+src/lib/runtime/embeds.ts        The embed allowlist
+src/lib/theme/spec.ts            The theme contract and its presets
+src/lib/theme/templates.ts       Reusable layouts, including the built-ins
+src/components/runtime/          Generates admin UI from a manifest
+src/components/public/templates/ The ten public templates the runtime owns
+src/components/design/           The page studio: theme, blocks, layouts
+src/modules/<id>/manifest.ts     The apps themselves — declarations only
+src/app/dashboard/               Owner-facing screens and server actions
+src/app/u/[handle]/              The public layer
+src/app/preview/                 A live example of the public front end
+supabase/migrations/             Schema and Row Level Security
 ```
 
 ## Deliberately not built yet
@@ -113,7 +166,8 @@ supabase/migrations/           Schema and Row Level Security
 - **The AI builder.** Describe an app and get a manifest. The runtime had to
   come first: with it working, the builder is a thin layer that emits a manifest
   and validates it through the same gate everything else uses.
-- **Publish and install between users.** The schema is ready; the flows are not.
+- **Publishing apps between users.** Layouts are already shareable; app
+  manifests are not yet. The schema is ready, the flow is not.
 - **Payments.** Author, price and pricing model already exist on listings.
 - **Cross-app interop.** Shared entities and an event bus, so apps compose
   through the platform rather than calling each other directly.

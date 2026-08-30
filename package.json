@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --no-warnings --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --no-warnings --import ./tests/register-alias.mjs --test tests/*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

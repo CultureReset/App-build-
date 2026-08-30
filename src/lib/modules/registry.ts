@@ -2,6 +2,13 @@ import { parseManifest, type ModuleManifest } from '@/lib/modules/spec'
 import qrMenu from '@/modules/qr-menu/manifest'
 import songRequest from '@/modules/song-request/manifest'
 import linkHub from '@/modules/link-hub/manifest'
+import listings from '@/modules/listings/manifest'
+import actionButtons from '@/modules/action-buttons/manifest'
+import socialLinks from '@/modules/social-links/manifest'
+import leadCapture from '@/modules/lead-capture/manifest'
+import gallery from '@/modules/gallery/manifest'
+import faq from '@/modules/faq/manifest'
+import video from '@/modules/video/manifest'
 
 /**
  * The catalogue of modules this deployment knows about.
@@ -11,7 +18,18 @@ import linkHub from '@/modules/link-hub/manifest'
  * and store-bought modules will be loaded from the database through the exact
  * same `parseManifest` gate.
  */
-const sources: unknown[] = [qrMenu, songRequest, linkHub]
+const sources: unknown[] = [
+  listings,
+  actionButtons,
+  socialLinks,
+  leadCapture,
+  gallery,
+  video,
+  faq,
+  linkHub,
+  qrMenu,
+  songRequest,
+]
 
 const catalogue: ModuleManifest[] = sources.map((source, index) => {
   const result = parseManifest(source)

@@ -1,6 +1,19 @@
 import type { ModuleField } from '@/lib/modules/spec'
 import type { FieldValue } from '@/lib/runtime/values'
 
+/**
+ * Groups thousands and shows cents only when there are any, so a menu item
+ * reads "$12.50" and a house reads "$540,000" rather than "$540000.00".
+ */
+export function formatMoney(value: number, currency = '$'): string {
+  const hasCents = Math.round(value * 100) % 100 !== 0
+
+  return `${currency}${value.toLocaleString('en-US', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`
+}
+
 export function formatValue(field: ModuleField, value: FieldValue, currency = '$'): string {
   if (value === null || value === '') {
     return ''
@@ -8,7 +21,7 @@ export function formatValue(field: ModuleField, value: FieldValue, currency = '$
 
   switch (field.type) {
     case 'money':
-      return `${currency}${Number(value).toFixed(2)}`
+      return formatMoney(Number(value), currency)
     case 'boolean':
       return value ? 'Yes' : 'No'
     case 'select':

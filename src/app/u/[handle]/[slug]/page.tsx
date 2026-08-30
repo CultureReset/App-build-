@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getModule } from '@/lib/modules/registry'
+import { coerceTheme } from '@/lib/theme/spec'
+import PageShell from '@/components/public/PageShell'
 import PublicSurface from '@/components/public/PublicSurface'
 import type { InstallRow, ProfileRow, RecordRow } from '@/lib/supabase/types'
 
 /** Rendered per request: the response depends on the caller's session and on live data. */
 export const dynamic = 'force-dynamic'
-
 
 /** A single container on its own page — the target of a QR code or a short link. */
 async function loadSurface(handle: string, slug: string) {
@@ -86,33 +87,32 @@ export default async function InstallPublicPage({
   }
 
   const { profile, install, manifest, records } = surface
+  const theme = coerceTheme(profile.theme)
   const owner = profile.display_name || `@${profile.handle}`
 
   return (
-    <main className="min-h-screen bg-ink-50">
-      <div className="h-2 w-full" style={{ backgroundColor: profile.accent }} />
-
-      <div className="mx-auto max-w-xl px-5 pb-16 pt-8">
-        <Link href={`/u/${profile.handle}`} className="text-sm text-ink-500 hover:text-ink-900">
+    <PageShell theme={theme}>
+      <main className="pg-shell mx-auto px-5 pb-20 pt-8">
+        <Link
+          href={`/u/${profile.handle}`}
+          className="pg-muted text-sm underline-offset-4 hover:underline"
+        >
           ← {owner}
         </Link>
 
-        <h1 className="mb-6 mt-4 text-2xl font-semibold tracking-tight">{install.name}</h1>
+        <h1 className="mb-6 mt-4 text-2xl font-semibold tracking-tight">
+          {install.public_heading ?? install.name}
+        </h1>
 
-        <PublicSurface
-          install={install}
-          manifest={manifest}
-          accent={profile.accent}
-          records={records}
-        />
+        <PublicSurface install={install} manifest={manifest} records={records} />
 
-        <p className="mt-14 text-center text-xs text-ink-400">
+        <p className="pg-muted mt-16 text-center text-xs opacity-70">
           Built with{' '}
-          <Link href="/" className="hover:text-ink-700">
+          <Link href="/" className="underline-offset-4 hover:underline">
             Modular
           </Link>
         </p>
-      </div>
-    </main>
+      </main>
+    </PageShell>
   )
 }

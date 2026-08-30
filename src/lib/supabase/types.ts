@@ -4,6 +4,9 @@ export type ProfileRow = {
   display_name: string
   bio: string
   accent: string
+  tagline: string
+  avatar_url: string | null
+  theme: Record<string, unknown>
   page_published: boolean
   created_at: string
   updated_at: string
@@ -24,6 +27,8 @@ export type InstallRow = {
   public_read_collections: string[]
   public_write_collections: string[]
   accepting_submissions: boolean
+  display_variant: string | null
+  public_heading: string | null
   created_at: string
   updated_at: string
 }
@@ -38,4 +43,28 @@ export type RecordRow = {
   submitted_by_public: boolean
   created_at: string
   updated_at: string
+}
+
+export type PageTemplateRow = {
+  id: string
+  author_id: string | null
+  slug: string
+  name: string
+  description: string
+  category: string
+  theme: Record<string, unknown>
+  plan: TemplateBlock[]
+  is_builtin: boolean
+  is_public: boolean
+  use_count: number
+  created_at: string
+  updated_at: string
+}
+
+/** One block in a reusable layout: which module, what to call it, how it shows. */
+export type TemplateBlock = {
+  module_id: string
+  name?: string
+  display_variant?: string
+  heading?: string
 }

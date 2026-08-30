@@ -100,3 +100,13 @@ test('money values are rounded to two places', () => {
   assert.equal(result.ok, true)
   assert.equal(result.ok && result.data.price, 13)
 })
+
+test('money is grouped, and shows cents only when there are any', async () => {
+  const { formatMoney } = await import('../src/lib/runtime/format.ts')
+
+  assert.equal(formatMoney(540000), '$540,000')
+  assert.equal(formatMoney(2400), '$2,400')
+  assert.equal(formatMoney(12.5), '$12.50')
+  assert.equal(formatMoney(9.99, '£'), '£9.99')
+  assert.equal(formatMoney(0), '$0')
+})

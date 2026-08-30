@@ -54,3 +54,183 @@ body {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
   }
 }
+
+/* ===========================================================================
+   Public page styling.
+
+   Every rule below reads CSS custom properties compiled from a validated
+   theme (src/lib/theme/spec.ts). Owners choose from named options; nothing
+   they enter is ever written into the stylesheet as raw CSS, which is what
+   keeps a page of third-party blocks safe to restyle wholesale.
+   =========================================================================== */
+
+.pg-root {
+  font-family: var(--pg-font);
+  color: var(--pg-text);
+}
+
+.pg-shell {
+  max-width: var(--pg-width);
+}
+
+.pg-blocks > * + * {
+  margin-top: var(--pg-block-gap);
+}
+
+.pg-stack > * + * {
+  margin-top: var(--pg-gap);
+}
+
+.pg-muted {
+  color: var(--pg-muted);
+}
+
+.pg-accent {
+  color: var(--pg-accent);
+}
+
+/* --- Surfaces ------------------------------------------------------------ */
+
+.pg-surface {
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius);
+  box-shadow: var(--pg-shadow);
+}
+
+.pg-root[data-surface='flat'] .pg-surface {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pg-root[data-surface='glass'] .pg-surface {
+  background: color-mix(in srgb, var(--pg-surface) 62%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.pg-pad {
+  padding: var(--pg-pad);
+}
+
+/* --- Headings ------------------------------------------------------------ */
+
+.pg-heading {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.pg-root[data-headings='accent'] .pg-heading {
+  color: var(--pg-accent);
+}
+
+.pg-root[data-headings='uppercase'] .pg-heading {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--pg-muted);
+}
+
+.pg-root[data-headings='hidden'] .pg-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--pg-radius-inner);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.pg-btn:hover {
+  filter: brightness(0.94);
+}
+
+.pg-btn-primary {
+  background: var(--pg-accent);
+  color: var(--pg-accent-contrast);
+}
+
+.pg-btn-secondary {
+  background: var(--pg-surface);
+  color: var(--pg-text);
+  border-color: var(--pg-border);
+}
+
+.pg-root[data-buttons='soft'] .pg-btn-primary {
+  background: var(--pg-accent-soft);
+  color: var(--pg-accent);
+}
+
+.pg-root[data-buttons='outline'] .pg-btn-primary {
+  background: transparent;
+  color: var(--pg-accent);
+  border-color: var(--pg-accent);
+}
+
+.pg-root[data-buttons='pill'] .pg-btn {
+  border-radius: 999px;
+}
+
+/* --- Inputs -------------------------------------------------------------- */
+
+.pg-field {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--pg-text);
+  background: var(--pg-bg-alt);
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius-inner);
+}
+
+.pg-field::placeholder {
+  color: var(--pg-muted);
+  opacity: 0.75;
+}
+
+.pg-field:focus {
+  outline: none;
+  border-color: var(--pg-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-accent) 22%, transparent);
+}
+
+.pg-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--pg-muted);
+}
+
+/* --- Media --------------------------------------------------------------- */
+
+.pg-media {
+  border-radius: var(--pg-radius);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--pg-muted) 18%, transparent);
+}
+
+.pg-divider {
+  border-color: var(--pg-border);
+}
+
+/* An inline row of items follows the page's own alignment. */
+.pg-root[data-header='centered'] .pg-inline-row {
+  justify-content: center;
+}

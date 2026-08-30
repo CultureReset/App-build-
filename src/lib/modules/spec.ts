@@ -96,10 +96,70 @@ export const PERMISSION_COPY: Record<ModulePermission, string> = {
   generate_qr: 'Generate a QR code that links to your public page',
 }
 
-/** Public surface templates the runtime ships. A module picks one; it cannot bring its own. */
-export const publicTemplateSchema = z.enum(['catalog', 'form', 'links', 'board'])
+/**
+ * Public surface templates the runtime ships.
+ *
+ * A module picks one by name and supplies data. It can never bring its own
+ * markup, styles or scripts — which is what makes a page of third-party blocks
+ * safe to render, and what lets one theme restyle every block at once.
+ */
+export const publicTemplateSchema = z.enum([
+  'catalog',
+  'form',
+  'links',
+  'board',
+  'listings',
+  'gallery',
+  'actions',
+  'socials',
+  'faq',
+  'embed',
+])
 
 export type PublicTemplate = z.infer<typeof publicTemplateSchema>
+
+/** Display variants an owner can switch between without touching the module. */
+export const displayVariantSchema = z.enum([
+  'list',
+  'cards',
+  'grid',
+  'buttons',
+  'inline',
+  'icons',
+  'strip',
+  'accordion',
+  'stack',
+  'feature',
+])
+
+export type DisplayVariant = z.infer<typeof displayVariantSchema>
+
+/** Which variants each template can actually render. */
+export const TEMPLATE_VARIANTS: Record<PublicTemplate, DisplayVariant[]> = {
+  catalog: ['list', 'cards', 'grid'],
+  form: ['stack', 'feature'],
+  links: ['list', 'buttons', 'grid'],
+  board: ['list', 'cards'],
+  listings: ['grid', 'cards', 'list'],
+  gallery: ['grid', 'strip', 'feature'],
+  actions: ['buttons', 'grid', 'inline'],
+  socials: ['icons', 'buttons', 'inline'],
+  faq: ['accordion', 'list'],
+  embed: ['feature', 'stack'],
+}
+
+export const VARIANT_LABELS: Record<DisplayVariant, string> = {
+  list: 'List',
+  cards: 'Cards',
+  grid: 'Grid',
+  buttons: 'Buttons',
+  inline: 'Inline',
+  icons: 'Icons',
+  strip: 'Strip',
+  accordion: 'Accordion',
+  stack: 'Stacked',
+  feature: 'Featured',
+}
 
 export const publicSurfaceSchema = z.object({
   template: publicTemplateSchema,
@@ -109,9 +169,34 @@ export const publicSurfaceSchema = z.object({
   submitCollection: z.string().optional(),
   /** Default heading, overridable per install. */
   heading: z.string().max(80).optional(),
+  /** Variant used until the owner picks another. Must be one this template supports. */
+  defaultVariant: displayVariantSchema.optional(),
+  /**
+   * Field keys the template reads for its non-obvious slots. Keeps the
+   * renderer honest without hard-coding field names per module.
+   */
+  imageField: z.string().optional(),
+  priceField: z.string().optional(),
+  metaFields: z.array(z.string()).max(4).optional(),
+  badgeField: z.string().optional(),
+  linkField: z.string().optional(),
+  bodyField: z.string().optional(),
 })
 
 export type PublicSurface = z.infer<typeof publicSurfaceSchema>
+
+/** The variant to render when an install has not chosen one. */
+export function defaultVariantFor(surface: PublicSurface): DisplayVariant {
+  return surface.defaultVariant ?? TEMPLATE_VARIANTS[surface.template][0]
+}
+
+/** Guards an owner-chosen variant against the template's supported set. */
+export function resolveVariant(surface: PublicSurface, chosen?: string | null): DisplayVariant {
+  const allowed = TEMPLATE_VARIANTS[surface.template]
+  return allowed.includes(chosen as DisplayVariant)
+    ? (chosen as DisplayVariant)
+    : defaultVariantFor(surface)
+}
 
 export const manifestSchema = z
   .object({
@@ -205,6 +290,40 @@ export const manifestSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'A module with a public surface must declare the "public_page" permission.',
+        })
+      }
+
+      const surfaceFields = manifest.collections[surface.collection]?.fields.map((f) => f.key) ?? []
+      const slots: [string, string | undefined][] = [
+        ['imageField', surface.imageField],
+        ['priceField', surface.priceField],
+        ['badgeField', surface.badgeField],
+        ['linkField', surface.linkField],
+        ['bodyField', surface.bodyField],
+      ]
+
+      for (const [slot, reference] of slots) {
+        if (reference && !surfaceFields.includes(reference)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Public surface ${slot} references unknown field "${reference}".`,
+          })
+        }
+      }
+
+      for (const reference of surface.metaFields ?? []) {
+        if (!surfaceFields.includes(reference)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Public surface metaFields references unknown field "${reference}".`,
+          })
+        }
+      }
+
+      if (surface.defaultVariant && !TEMPLATE_VARIANTS[surface.template].includes(surface.defaultVariant)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Template "${surface.template}" does not support the "${surface.defaultVariant}" variant.`,
         })
       }
     }

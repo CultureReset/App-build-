@@ -166,7 +166,7 @@ export async function setInstallPublic(installId: string, isPublic: boolean): Pr
 
   revalidatePath('/dashboard')
   revalidatePath(`/dashboard/apps/${install.id}`)
-  revalidatePath('/dashboard/page')
+  revalidatePath('/dashboard/design')
   return { ok: true }
 }
 
@@ -358,8 +358,10 @@ export async function moveRecord(
 export async function saveProfile(input: {
   handle: string
   display_name: string
+  tagline: string
   bio: string
   accent: string
+  avatar_url: string
 }): Promise<ActionState> {
   const { supabase, user } = await requireUser()
 
@@ -379,8 +381,27 @@ export async function saveProfile(input: {
     return { error: 'Bio must be 400 characters or fewer.' }
   }
 
+  if (input.tagline.length > 120) {
+    return { error: 'Tagline must be 120 characters or fewer.' }
+  }
+
   if (!/^#[0-9a-fA-F]{6}$/.test(input.accent)) {
     return { error: 'Pick a valid accent colour.' }
+  }
+
+  // An avatar is optional, but if given it must be an ordinary http(s) image link.
+  const avatar = input.avatar_url.trim()
+
+  if (avatar) {
+    try {
+      const parsed = new URL(avatar)
+
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error('bad protocol')
+      }
+    } catch {
+      return { error: 'The photo link must be a valid http or https URL.' }
+    }
   }
 
   const { error } = await supabase
@@ -388,8 +409,10 @@ export async function saveProfile(input: {
     .update({
       handle,
       display_name: input.display_name.trim(),
+      tagline: input.tagline.trim(),
       bio: input.bio.trim(),
       accent: input.accent,
+      avatar_url: avatar || null,
     })
     .eq('id', user.id)
 
@@ -400,7 +423,7 @@ export async function saveProfile(input: {
     }
   }
 
-  revalidatePath('/dashboard/page')
+  revalidatePath('/dashboard/design')
   return { ok: true }
 }
 
@@ -416,7 +439,7 @@ export async function setPagePublished(published: boolean): Promise<ActionState>
     return { error: 'Could not update your page.' }
   }
 
-  revalidatePath('/dashboard/page')
+  revalidatePath('/dashboard/design')
   return { ok: true }
 }
 

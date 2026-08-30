@@ -215,6 +215,17 @@ export function resolveVariant(surface: PublicSurface, chosen?: string | null): 
     : defaultVariantFor(surface)
 }
 
+export const moduleCategorySchema = z.enum([
+  'hospitality',
+  'events',
+  'commerce',
+  'content',
+  'operations',
+  'personal',
+])
+
+export type ModuleCategory = z.infer<typeof moduleCategorySchema>
+
 export const manifestSchema = z
   .object({
     id: z
@@ -228,7 +239,7 @@ export const manifestSchema = z
     description: z.string().min(1).max(600),
     icon: z.string().min(1).max(8),
     accent: z.string().regex(/^#[0-9a-f]{6}$/i),
-    category: z.enum(['hospitality', 'events', 'commerce', 'content', 'operations', 'personal']),
+    category: moduleCategorySchema,
     author: z.object({
       name: z.string().min(1).max(60),
       handle: z.string().min(1).max(40),

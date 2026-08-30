@@ -41,6 +41,36 @@ types and ten public templates. Adding a template is two edits: write the
 component, add an entry to `src/lib/modules/templates.ts`. Nothing else in the
 codebase enumerates them, and the builder discovers them from that registry.
 
+## Describe it, or speak it
+
+`/dashboard/build/describe`. Type what you need, or tap the microphone and say
+it — voice is transcribed entirely in the browser (the Web Speech API), so no
+audio is ever sent anywhere, including to the AI provider; only the resulting
+text leaves the device, exactly as if it had been typed.
+
+The model never writes code or markup. It fills in the same handful of choices
+the manual builder asks a person to make — name, fields, whether there's a
+public face — as one structured tool call. That gets checked twice before
+anything is saved:
+
+1. **Schema check.** The tool call is parsed against a fixed shape (`AiDraft`)
+   built from the platform's own field-type and template enums, so the model
+   cannot propose a type or template that does not exist.
+2. **Manifest validation.** The result is converted into the same `ModuleDraft`
+   the manual builder edits and run through the identical `validateDraft` gate
+   every module passes through — the AI has no shortcut around it.
+
+Accepting a proposal drops the user into the same manual builder from a normal
+click-through creation, fully editable, so a bad guess by the model is never a
+dead end. Refining is conversational: each follow-up sends the current draft
+back to the model with the new instruction and gets a patched proposal.
+
+Generation is rate-limited per account in the database (20/hour), the same way
+public form submissions are — an unmetered call to a paid API is a real cost
+and abuse surface, not just a UX nicety. Without an `ANTHROPIC_API_KEY` set,
+the "Describe it" entry point simply does not appear; manual building is
+unaffected either way.
+
 ## The app builder
 
 `/dashboard/build`. Name your app, declare the fields it stores, choose whether
@@ -171,6 +201,7 @@ cp .env.example .env.local     # fill in the URL and anon key
 # 2. Apply the schema (Supabase SQL editor, or the CLI):
 #    every file in supabase/migrations, in order.
 #    0005 and 0006 seed the apps and layouts that ship with the platform.
+#    0008 adds AI-generation rate limiting (optional feature, safe to apply either way).
 
 npm run dev
 ```
@@ -198,7 +229,8 @@ src/lib/theme/templates.ts       Reusable layouts, including the built-ins
 src/components/runtime/          Generates admin UI from a manifest
 src/components/public/templates/ The ten public templates the runtime owns
 src/components/design/           The page studio: theme, blocks, layouts
-src/components/build/            The app builder
+src/components/build/            The manual app builder, plus the describe-it chat and voice input
+src/lib/ai/                      The AI draft schema, model call, and the mapper into a ModuleDraft
 scripts/                         Seed generators and the database test runner
 supabase/tests/                  Database security tests
 src/modules/<id>/manifest.ts     The apps themselves — declarations only
@@ -210,9 +242,8 @@ supabase/migrations/             Schema and Row Level Security
 
 ## Deliberately not built yet
 
-- **The AI builder.** Describe an app in a sentence and get a manifest. The
-  hand-driven builder had to come first: with it working, the AI layer just
-  emits a draft and passes it through the same validation gate.
+- **Generating from an existing document or spreadsheet.** Only a plain-
+  language description drives generation today.
 - **Custom code modules.** For rendering the templates cannot express, a
   sandboxed module type with scoped capabilities.
 - **Payments.** Author, price and pricing model already exist on listings.

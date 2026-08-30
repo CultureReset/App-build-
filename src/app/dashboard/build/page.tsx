@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listAuthoredModules } from '@/lib/modules/catalogue'
+import { isAiConfigured } from '@/lib/ai/client'
 import NewModuleButton from '@/components/build/NewModuleButton'
 
 export const metadata = { title: 'Build' }
@@ -24,6 +25,7 @@ export default async function BuildPage() {
   }
 
   const entries = await listAuthoredModules(supabase, user.id)
+  const aiAvailable = isAiConfigured()
 
   return (
     <div>
@@ -36,7 +38,14 @@ export default async function BuildPage() {
             link, or go in the store for anyone to install.
           </p>
         </div>
-        <NewModuleButton />
+        <div className="flex gap-2">
+          {aiAvailable ? (
+            <Link href="/dashboard/build/describe" className="btn-primary">
+              Describe it
+            </Link>
+          ) : null}
+          <NewModuleButton />
+        </div>
       </div>
 
       {entries.length === 0 ? (
@@ -47,7 +56,12 @@ export default async function BuildPage() {
             Start with what you need to keep track of — bookings, stock, sign-ups, jobs, anything.
             Name the fields, pick how it should look, and it works.
           </p>
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex justify-center gap-2">
+            {aiAvailable ? (
+              <Link href="/dashboard/build/describe" className="btn-primary">
+                Describe it
+              </Link>
+            ) : null}
             <NewModuleButton />
           </div>
         </div>

@@ -194,3 +194,50 @@ set role anon;
 select 'rows visible on an unpublished page (must be 0): ' || count(*) from public.records;
 select 'installs visible on an unpublished page (must be 0): ' || count(*) from public.installs;
 reset role;
+
+\echo '--- AI generation rate limiting ---'
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+do $$
+declare accepted integer := 0;
+begin
+  for i in 1..25 loop
+    begin
+      perform public.check_and_log_ai_generation();
+      accepted := accepted + 1;
+    exception when sqlstate 'P0001' then
+      exit;
+    end;
+  end loop;
+
+  if accepted >= 25 then
+    raise exception 'SECURITY FAILURE: AI generation rate limit never engaged (% accepted)', accepted;
+  end if;
+
+  raise notice 'PASS: AI generation rate limit engaged after % calls', accepted;
+end $$;
+
+reset role;
+set role anon;
+do $$
+begin
+  perform public.check_and_log_ai_generation();
+  raise exception 'SECURITY FAILURE: an anonymous caller was allowed to log an AI generation';
+exception
+  when insufficient_privilege then
+    raise notice 'PASS: anonymous callers cannot call check_and_log_ai_generation';
+  when sqlstate 'P0001' then
+    raise notice 'PASS: anonymous callers cannot call check_and_log_ai_generation';
+end $$;
+
+do $$
+begin
+  insert into public.ai_generation_log (user_id) values ('11111111-1111-1111-1111-111111111111');
+  raise exception 'SECURITY FAILURE: anon inserted directly into ai_generation_log';
+exception
+  when insufficient_privilege then raise notice 'PASS: direct INSERT into ai_generation_log blocked';
+end $$;
+
+reset role;

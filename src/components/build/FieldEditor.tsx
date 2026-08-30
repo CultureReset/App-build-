@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { keyFrom } from '@/lib/modules/field-key'
 import type { ModuleField } from '@/lib/modules/spec'
 
 const TYPES: { value: ModuleField['type']; label: string; hint: string }[] = [
@@ -18,37 +19,6 @@ const TYPES: { value: ModuleField['type']; label: string; hint: string }[] = [
   { value: 'image', label: 'Image link', hint: 'A link to a hosted picture' },
   { value: 'color', label: 'Colour', hint: 'A colour picker' },
 ]
-
-export function keyFrom(label: string, taken: string[]): string {
-  const base =
-    label
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .replace(/^([0-9])/, 'f$1')
-      .slice(0, 40) || 'field'
-
-  let key = base
-  let counter = 2
-
-  while (taken.includes(key)) {
-    key = `${base}_${counter}`
-    counter += 1
-  }
-
-  return key
-}
-
-export function blankField(label: string, taken: string[]): ModuleField {
-  return {
-    key: keyFrom(label, taken),
-    label,
-    type: 'text',
-    required: false,
-    ownerOnly: false,
-    maxLength: 120,
-  }
-}
 
 /** Edits one declared field. What is set here becomes real inputs and real validation. */
 export default function FieldEditor({

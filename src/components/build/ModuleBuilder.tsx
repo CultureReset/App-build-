@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import FieldEditor, { blankField, keyFrom } from '@/components/build/FieldEditor'
+import FieldEditor from '@/components/build/FieldEditor'
+import { blankField, keyFrom } from '@/lib/modules/field-key'
 import { createVersion, deleteModule, saveModule, setModuleVisibility } from '@/app/dashboard/build/actions'
 import { deriveManifest, validateDraft, type ModuleDraft } from '@/lib/modules/derive'
 import { TEMPLATE_INFO, TEMPLATE_ORDER } from '@/lib/modules/templates'

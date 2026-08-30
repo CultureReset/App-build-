@@ -69,11 +69,11 @@ test('every built-in layout satisfies the layout schema', () => {
 })
 
 test('a built-in layout only names modules that exist and can be public', async () => {
-  const { getModule } = await import('../src/lib/modules/registry.ts')
+  const { getBuiltinModule } = await import('../src/lib/modules/builtins.ts')
 
   for (const template of BUILTIN_TEMPLATES) {
     for (const block of template.plan) {
-      const manifest = getModule(block.module_id)
+      const manifest = getBuiltinModule(block.module_id)
 
       assert.ok(manifest, `${template.slug} names unknown module "${block.module_id}"`)
       assert.ok(

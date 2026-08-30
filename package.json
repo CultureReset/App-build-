@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --no-warnings --import ./tests/register-alias.mjs --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --no-warnings --import ./tests/register-alias.mjs --test tests/*.test.ts",
+    "seed:modules": "node --experimental-strip-types --no-warnings --import ./tests/register-alias.mjs scripts/generate-module-seed.ts",
+    "seed:layouts": "node --experimental-strip-types --no-warnings --import ./tests/register-alias.mjs scripts/generate-layout-seed.ts",
+    "seed": "npm run seed:modules && npm run seed:layouts",
+    "db:test": "bash scripts/db-test.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

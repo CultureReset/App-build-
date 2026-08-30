@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest } from '@/lib/modules/catalogue'
 import { coerceTheme } from '@/lib/theme/spec'
 import PageShell from '@/components/public/PageShell'
 import PublicSurface from '@/components/public/PublicSurface'
@@ -36,7 +36,7 @@ async function loadSurface(handle: string, slug: string) {
     return null
   }
 
-  const manifest = getModule(install.module_id)
+  const manifest = installManifest(install)
 
   if (!manifest?.publicSurface) {
     return null

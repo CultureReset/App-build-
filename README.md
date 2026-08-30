@@ -19,6 +19,46 @@ see. It never ships executable code. That single decision is what makes the rest
 possible: apps can't break each other, security is enforced once for all of
 them, and an app is a small, diffable, versionable, sellable artifact.
 
+## Nothing is hardwired
+
+Everything the platform offers is data that users create, not code that ships:
+
+| | Where it lives | Who can add one |
+| --- | --- | --- |
+| **Apps** | `module_listings` rows | anyone, from the app builder |
+| **Layouts** | `page_templates` rows | anyone, from the page studio |
+| **Page designs** | a theme on the profile | every owner, fully |
+| **Installed apps** | `installs` rows with a pinned manifest | every owner |
+
+The apps and layouts that ship with the platform are **seeded as ordinary
+rows**. They hold no privileges: the store, the runtime and the installer treat
+them exactly like something a user built, and `npm test` proves it by
+round-tripping every built-in app through the builder's own data shape. If a
+built-in could express something the builder cannot, that test fails.
+
+The one thing that is code is the set of rendering primitives — thirteen field
+types and ten public templates. Adding a template is two edits: write the
+component, add an entry to `src/lib/modules/templates.ts`. Nothing else in the
+codebase enumerates them, and the builder discovers them from that registry.
+
+## The app builder
+
+`/dashboard/build`. Name your app, declare the fields it stores, choose whether
+the public sees it and how, and it works: a full admin screen, real validation,
+a public block, its own URL and QR code. No code is written, generated or
+deployed — which is exactly why installing an app a stranger built is safe.
+
+- **Permissions are derived, never declared.** What an app can do is worked out
+  from what it actually does, so an author cannot understate their app's access.
+- **Public read/write flags are derived too**, so nobody exposes a collection by
+  accident.
+- **Published versions are frozen.** Changes go into a new version that people
+  choose to move to.
+- **Every install pins its manifest.** An author editing or deleting their app
+  cannot change or break a copy already running on someone else's account.
+
+Modules can be private, shared by link, or listed in the store.
+
 ## One login, one dashboard
 
 Everything a user builds lives behind a single account. Apps they install, the
@@ -129,15 +169,16 @@ npm install
 cp .env.example .env.local     # fill in the URL and anon key
 
 # 2. Apply the schema (Supabase SQL editor, or the CLI):
-#    supabase/migrations/0001_foundation.sql
-#    supabase/migrations/0002_security.sql
-#    supabase/migrations/0003_pages.sql
+#    every file in supabase/migrations, in order.
+#    0005 and 0006 seed the apps and layouts that ship with the platform.
 
 npm run dev
 ```
 
 ```bash
-npm test          # runtime, manifest, theme and layout validation
+npm test          # runtime, manifest, theme, layout and builder validation
+npm run db:test   # applies every migration to a throwaway Postgres and
+                  # exercises the security policies as anon and as another user
 npm run typecheck
 npm run build
 ```
@@ -146,7 +187,10 @@ npm run build
 
 ```
 src/lib/modules/spec.ts          The manifest contract — the heart of the platform
-src/lib/modules/registry.ts      Validated catalogue of available apps
+src/lib/modules/catalogue.ts     Reads modules from the database
+src/lib/modules/derive.ts        Turns a builder draft into a validated manifest
+src/lib/modules/templates.ts     The template registry the builder reads
+src/lib/modules/builtins.ts      Seed source for the apps that ship
 src/lib/runtime/values.ts        Server-side validation for every write
 src/lib/runtime/embeds.ts        The embed allowlist
 src/lib/theme/spec.ts            The theme contract and its presets
@@ -154,6 +198,9 @@ src/lib/theme/templates.ts       Reusable layouts, including the built-ins
 src/components/runtime/          Generates admin UI from a manifest
 src/components/public/templates/ The ten public templates the runtime owns
 src/components/design/           The page studio: theme, blocks, layouts
+src/components/build/            The app builder
+scripts/                         Seed generators and the database test runner
+supabase/tests/                  Database security tests
 src/modules/<id>/manifest.ts     The apps themselves — declarations only
 src/app/dashboard/               Owner-facing screens and server actions
 src/app/u/[handle]/              The public layer
@@ -163,11 +210,11 @@ supabase/migrations/             Schema and Row Level Security
 
 ## Deliberately not built yet
 
-- **The AI builder.** Describe an app and get a manifest. The runtime had to
-  come first: with it working, the builder is a thin layer that emits a manifest
-  and validates it through the same gate everything else uses.
-- **Publishing apps between users.** Layouts are already shareable; app
-  manifests are not yet. The schema is ready, the flow is not.
+- **The AI builder.** Describe an app in a sentence and get a manifest. The
+  hand-driven builder had to come first: with it working, the AI layer just
+  emits a draft and passes it through the same validation gate.
+- **Custom code modules.** For rendering the templates cannot express, a
+  sandboxed module type with scoped capabilities.
 - **Payments.** Author, price and pricing model already exist on listings.
 - **Cross-app interop.** Shared entities and an event bus, so apps compose
   through the platform rather than calling each other directly.

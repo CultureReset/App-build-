@@ -1,7 +1,7 @@
 import { EmptyBlock, safeHref, text, visibleRecords } from './shared'
 import type { TemplateProps } from '../types'
 
-export default function Links({ collection, records, variant }: TemplateProps) {
+export default function Links({ surface, collection, records, variant }: TemplateProps) {
   const rows = visibleRecords(collection, records)
 
   if (rows.length === 0) {
@@ -14,7 +14,7 @@ export default function Links({ collection, records, variant }: TemplateProps) {
   return (
     <ul className={layout}>
       {rows.map((row) => {
-        const href = safeHref(text(row, collection.subtitleField ?? 'url'))
+        const href = safeHref(text(row, surface.linkField ?? collection.subtitleField))
 
         if (!href) {
           return null

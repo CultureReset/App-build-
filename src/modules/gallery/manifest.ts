@@ -12,7 +12,7 @@ const manifest: ModuleManifest = {
   category: 'content',
   author: { name: 'Platform', handle: 'platform' },
   pricing: { model: 'free', amountCents: 0 },
-  permissions: ['public_page', 'store_records'],
+  permissions: ['public_page', 'store_records', 'generate_qr'],
   settings: [],
   collections: {
     photos: {

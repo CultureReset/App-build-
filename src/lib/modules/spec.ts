@@ -89,6 +89,23 @@ export const permissionSchema = z.enum([
 
 export type ModulePermission = z.infer<typeof permissionSchema>
 
+/**
+ * Canonical order for permissions, so a manifest is byte-identical however it
+ * was authored — by hand, by the builder, or round-tripped through storage.
+ */
+const PERMISSION_ORDER: ModulePermission[] = [
+  'store_records',
+  'public_page',
+  'collect_submissions',
+  'generate_qr',
+]
+
+export function sortPermissions(permissions: ModulePermission[]): ModulePermission[] {
+  return [...new Set(permissions)].sort(
+    (a, b) => PERMISSION_ORDER.indexOf(a) - PERMISSION_ORDER.indexOf(b),
+  )
+}
+
 export const PERMISSION_COPY: Record<ModulePermission, string> = {
   public_page: 'Show a page on your public profile that anyone can visit',
   collect_submissions: 'Let visitors send you entries through that page',
@@ -222,7 +239,7 @@ export const manifestSchema = z
       amountCents: z.number().int().min(0).default(0),
       interval: z.enum(['month', 'year']).optional(),
     }),
-    permissions: z.array(permissionSchema).min(1),
+    permissions: z.array(permissionSchema).min(1).transform(sortPermissions),
     /** Per-install configuration the owner edits in Settings. */
     settings: z.array(fieldSchema).max(20).default([]),
     collections: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), collectionSchema),

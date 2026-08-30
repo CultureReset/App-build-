@@ -180,23 +180,29 @@ security definer
 set search_path = public
 as $$
 declare
+  base text;
   candidate text;
   suffix integer := 0;
 begin
-  candidate := regexp_replace(lower(split_part(new.email, '@', 1)), '[^a-z0-9_-]', '', 'g');
+  base := regexp_replace(lower(split_part(coalesce(new.email, ''), '@', 1)), '[^a-z0-9_-]', '', 'g');
 
-  if char_length(candidate) < 2 then
-    candidate := 'user';
+  -- A handle must start with a letter or digit and be at least two characters.
+  base := regexp_replace(base, '^[_-]+', '');
+
+  if char_length(base) < 2 then
+    base := 'user';
   end if;
 
-  candidate := left(candidate, 24);
+  base := left(base, 24);
+  candidate := base;
 
-  while exists (select 1 from public.profiles where handle = candidate || nullif(suffix, 0)::text) loop
+  while exists (select 1 from public.profiles where handle = candidate) loop
     suffix := suffix + 1;
+    candidate := base || suffix::text;
   end loop;
 
   insert into public.profiles (id, handle, display_name)
-  values (new.id, candidate || nullif(suffix, 0)::text, '');
+  values (new.id, candidate, '');
 
   return new;
 end;

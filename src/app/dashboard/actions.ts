@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest, loadListing, loadNewestByModuleId } from '@/lib/modules/catalogue'
 import { publicReadCollections, publicWriteCollections } from '@/lib/modules/spec'
 import { validateFields, validateOwnerRecord } from '@/lib/runtime/values'
 import type { InstallRow } from '@/lib/supabase/types'
@@ -42,10 +42,10 @@ async function requireOwnedInstall(installId: string) {
     throw new Error('That app was not found on your account.')
   }
 
-  const manifest = getModule(data.module_id)
+  const manifest = installManifest(data)
 
   if (!manifest) {
-    throw new Error(`The "${data.module_id}" app is no longer available.`)
+    throw new Error(`The "${data.module_id}" app could not be read.`)
   }
 
   return { supabase, user, install: data, manifest }
@@ -59,14 +59,27 @@ function slugify(input: string): string {
     .slice(0, 40)
 }
 
-export async function installModule(moduleId: string): Promise<ActionState> {
-  const manifest = getModule(moduleId)
+/**
+ * Installs a module from the store.
+ *
+ * The manifest is copied onto the install and never read from the author's
+ * listing again. That pin is the isolation guarantee: an author editing or
+ * deleting their module cannot change or break an app already running on
+ * somebody else's account.
+ */
+export async function installModule(listingId: string): Promise<ActionState> {
+  const { supabase, user } = await requireUser()
+  const entry = await loadListing(supabase, listingId)
 
-  if (!manifest) {
-    return { error: 'That app does not exist.' }
+  if (!entry) {
+    return { error: 'That app could not be found.' }
   }
 
-  const { supabase, user } = await requireUser()
+  const { manifest, listing } = entry
+
+  if (listing.status !== 'published' && listing.author_id !== user.id) {
+    return { error: 'That app is not available to install.' }
+  }
 
   const base = slugify(manifest.name) || manifest.id
   const { data: existing } = await supabase
@@ -95,12 +108,13 @@ export async function installModule(moduleId: string): Promise<ActionState> {
     owner_id: user.id,
     module_id: manifest.id,
     module_version: manifest.version,
+    listing_id: listing.id,
+    manifest,
     slug,
     name: manifest.name,
     config: defaults,
     // The permissions the manifest declared are the permissions granted —
-    // recorded on the install so a later manifest version cannot widen them
-    // silently.
+    // recorded on the install so a later version cannot widen them silently.
     granted_permissions: manifest.permissions,
     public_read_collections: publicReadCollections(manifest),
     public_write_collections: publicWriteCollections(manifest),
@@ -109,6 +123,10 @@ export async function installModule(moduleId: string): Promise<ActionState> {
 
   if (error) {
     return { error: 'Could not install that app. Please try again.' }
+  }
+
+  if (!listing.is_builtin || listing.author_id) {
+    await supabase.rpc('increment_module_installs', { p_listing_id: listing.id })
   }
 
   revalidatePath('/dashboard')

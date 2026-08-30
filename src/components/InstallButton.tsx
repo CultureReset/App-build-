@@ -11,12 +11,12 @@ import { PERMISSION_COPY, type ModulePermission } from '@/lib/modules/spec'
  * That prompt is the trust contract of the whole store.
  */
 export default function InstallButton({
-  moduleId,
+  listingId,
   moduleName,
   permissions,
   installedCount,
 }: {
-  moduleId: string
+  listingId: string
   moduleName: string
   permissions: ModulePermission[]
   installedCount: number
@@ -30,7 +30,7 @@ export default function InstallButton({
     setPending(true)
     setError(null)
 
-    const result = await installModule(moduleId)
+    const result = await installModule(listingId)
 
     setPending(false)
 

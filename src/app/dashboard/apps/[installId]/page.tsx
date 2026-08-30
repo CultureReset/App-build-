@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest } from '@/lib/modules/catalogue'
 import { siteUrl } from '@/lib/supabase/env'
 import CollectionManager from '@/components/runtime/CollectionManager'
 import SettingsForm from '@/components/runtime/SettingsForm'
@@ -26,7 +26,7 @@ export default async function InstallPage({
     notFound()
   }
 
-  const manifest = getModule(install.module_id)
+  const manifest = installManifest(install)
 
   if (!manifest) {
     notFound()

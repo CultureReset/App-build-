@@ -3,14 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest, loadNewestByModuleId } from '@/lib/modules/catalogue'
 import { publicReadCollections, publicWriteCollections, resolveVariant } from '@/lib/modules/spec'
 import { themeSchema, coerceTheme } from '@/lib/theme/spec'
 import {
-  getBuiltinTemplate,
   pageTemplateSchema,
   templatePlanSchema,
-  type PageTemplate,
   type TemplateBlock,
 } from '@/lib/theme/templates'
 import type { InstallRow, PageTemplateRow, ProfileRow } from '@/lib/supabase/types'
@@ -65,7 +63,7 @@ export async function setBlockVariant(installId: string, variant: string): Promi
     .eq('owner_id', user.id)
     .maybeSingle<InstallRow>()
 
-  const surface = install ? getModule(install.module_id)?.publicSurface : undefined
+  const surface = install ? installManifest(install)?.publicSurface : undefined
 
   if (!install || !surface) {
     return { error: 'That block was not found.' }
@@ -112,7 +110,7 @@ export async function moveBlock(installId: string, direction: 'up' | 'down'): Pr
 
   const { data: rows } = await supabase
     .from('installs')
-    .select('id, public_position, module_id')
+    .select('*')
     .eq('owner_id', user.id)
     .order('public_position', { ascending: true })
     .order('created_at', { ascending: true })
@@ -121,7 +119,7 @@ export async function moveBlock(installId: string, direction: 'up' | 'down'): Pr
     return { error: 'Could not reorder that block.' }
   }
 
-  const blocks = rows.filter((row) => getModule(row.module_id)?.publicSurface)
+  const blocks = rows.filter((row) => installManifest(row as InstallRow)?.publicSurface)
   const index = blocks.findIndex((row) => row.id === installId)
   const target = direction === 'up' ? index - 1 : index + 1
 
@@ -152,45 +150,41 @@ export async function moveBlock(installId: string, direction: 'up' | 'down'): Pr
  * missing ones are installed, and anything not in the layout keeps its data and
  * simply moves below. Applying a layout never deletes a block or its content.
  */
-export async function applyTemplate(source: {
-  builtinSlug?: string
-  templateId?: string
-}): Promise<ActionState> {
+/**
+ * Applies a layout to the caller's page.
+ *
+ * Deliberately additive: apps already installed are reused and repositioned,
+ * missing ones are installed, and anything not in the layout keeps its data and
+ * simply moves below. Applying a layout never deletes a block or its content.
+ */
+export async function applyTemplate(templateId: string): Promise<ActionState> {
   const { supabase, user } = await requireUser()
 
-  let template: PageTemplate | undefined
-  let templateId: string | undefined
+  const { data: row } = await supabase
+    .from('page_templates')
+    .select('*')
+    .eq('id', templateId)
+    .maybeSingle<PageTemplateRow>()
 
-  if (source.builtinSlug) {
-    template = getBuiltinTemplate(source.builtinSlug)
-  } else if (source.templateId) {
-    const { data } = await supabase
-      .from('page_templates')
-      .select('*')
-      .eq('id', source.templateId)
-      .maybeSingle<PageTemplateRow>()
-
-    if (data) {
-      // A stored layout is re-validated before use, exactly like a manifest.
-      const parsed = pageTemplateSchema.safeParse({
-        slug: data.slug,
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        theme: coerceTheme(data.theme),
-        plan: data.plan,
-      })
-
-      if (parsed.success) {
-        template = parsed.data
-        templateId = data.id
-      }
-    }
-  }
-
-  if (!template) {
+  if (!row) {
     return { error: 'That layout could not be found.' }
   }
+
+  // A stored layout is re-validated before use, exactly like a manifest.
+  const parsed = pageTemplateSchema.safeParse({
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    theme: coerceTheme(row.theme),
+    plan: row.plan,
+  })
+
+  if (!parsed.success) {
+    return { error: 'That layout is not valid.' }
+  }
+
+  const template = parsed.data
 
   const { data: existing } = await supabase
     .from('installs')
@@ -203,7 +197,10 @@ export async function applyTemplate(source: {
   let position = 0
 
   for (const block of template.plan as TemplateBlock[]) {
-    const manifest = getModule(block.module_id)
+    // A layout names modules by id, so each one is resolved against the live
+    // catalogue at apply time and then pinned onto the install like any other.
+    const entry = await loadNewestByModuleId(supabase, block.module_id)
+    const manifest = entry?.manifest
 
     if (!manifest?.publicSurface) {
       continue
@@ -255,6 +252,8 @@ export async function applyTemplate(source: {
           owner_id: user.id,
           module_id: manifest.id,
           module_version: manifest.version,
+          listing_id: entry!.listing.id,
+          manifest,
           slug,
           name: block.name ?? manifest.name,
           config: defaults,
@@ -290,9 +289,7 @@ export async function applyTemplate(source: {
 
   await supabase.from('profiles').update({ theme: template.theme }).eq('id', user.id)
 
-  if (templateId) {
-    await supabase.rpc('increment_template_use', { p_template_id: templateId })
-  }
+  await supabase.rpc('increment_template_use', { p_template_id: row.id })
 
   revalidateDesign()
   return { ok: true }
@@ -328,7 +325,7 @@ export async function publishLayout(input: {
   }
 
   const plan = (installs ?? [])
-    .filter((install) => getModule(install.module_id)?.publicSurface)
+    .filter((install) => installManifest(install)?.publicSurface)
     .map((install) => ({
       module_id: install.module_id,
       name: install.name,

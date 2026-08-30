@@ -1,8 +1,35 @@
 import Link from 'next/link'
-import { listModules } from '@/lib/modules/registry'
+import { createServerSupabase } from '@/lib/supabase/server'
+import { listStoreModules } from '@/lib/modules/catalogue'
+import { BUILTIN_MODULES } from '@/lib/modules/builtins'
+import { isSupabaseConfigured } from '@/lib/supabase/env'
+import type { ModuleManifest } from '@/lib/modules/spec'
 
-export default function LandingPage() {
-  const modules = listModules()
+/** Rendered per request: the store is data, so this reflects what is live. */
+export const dynamic = 'force-dynamic'
+
+/**
+ * Shows what is actually published. Before the database is configured this
+ * falls back to the manifests that ship with the platform, so the marketing
+ * page still renders on a fresh checkout.
+ */
+async function catalogue(): Promise<ModuleManifest[]> {
+  if (!isSupabaseConfigured()) {
+    return BUILTIN_MODULES
+  }
+
+  try {
+    const supabase = await createServerSupabase()
+    const entries = await listStoreModules(supabase)
+
+    return entries.length > 0 ? entries.map((entry) => entry.manifest) : BUILTIN_MODULES
+  } catch {
+    return BUILTIN_MODULES
+  }
+}
+
+export default async function LandingPage() {
+  const modules = await catalogue()
 
   return (
     <main className="min-h-screen bg-ink-950 text-white">
@@ -90,7 +117,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module) => (
+          {modules.map((module: ModuleManifest) => (
             <div
               key={module.id}
               className="rounded-xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20"

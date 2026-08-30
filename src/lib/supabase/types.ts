@@ -29,6 +29,8 @@ export type InstallRow = {
   accepting_submissions: boolean
   display_variant: string | null
   public_heading: string | null
+  listing_id: string | null
+  manifest: unknown
   created_at: string
   updated_at: string
 }
@@ -59,6 +61,8 @@ export type PageTemplateRow = {
   use_count: number
   created_at: string
   updated_at: string
+  /** Set on the server: whether the signed-in user authored this layout. */
+  mine?: boolean
 }
 
 /** One block in a reusable layout: which module, what to call it, how it shows. */

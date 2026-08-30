@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest } from '@/lib/modules/catalogue'
 import type { InstallRow, ProfileRow } from '@/lib/supabase/types'
 
 export const metadata = { title: 'My apps' }
@@ -51,7 +51,7 @@ export default async function AppsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((install) => {
-            const manifest = getModule(install.module_id)
+            const manifest = installManifest(install)
 
             return (
               <Link

@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest, listStoreModules } from '@/lib/modules/catalogue'
 import { siteUrl } from '@/lib/supabase/env'
 import { coerceTheme } from '@/lib/theme/spec'
-import { BUILTIN_TEMPLATES } from '@/lib/theme/templates'
 import ProfileForm from '@/components/design/ProfileForm'
 import ThemeEditor from '@/components/design/ThemeEditor'
 import BlockManager, { type Block } from '@/components/design/BlockManager'
@@ -49,12 +48,15 @@ export default async function DesignPage({
         .order('public_position', { ascending: true })
         .order('created_at', { ascending: true })
         .returns<InstallRow[]>(),
+      // Built-in and user-published layouts are the same kind of row; Row Level
+      // Security decides which of them this caller may read.
       supabase
         .from('page_templates')
         .select('*')
         .eq('is_public', true)
+        .order('is_builtin', { ascending: false })
         .order('use_count', { ascending: false })
-        .limit(24)
+        .limit(48)
         .returns<PageTemplateRow[]>(),
       supabase
         .from('page_templates')
@@ -68,9 +70,31 @@ export default async function DesignPage({
     redirect('/login')
   }
 
+  // Layouts name modules by id; the gallery needs their icons, and the
+  // catalogue lives in the database rather than in code.
+  // One list: public layouts plus the caller's own drafts, deduplicated, with
+  // ownership resolved here rather than in the browser.
+  const authored = new Set((mine ?? []).map((row) => row.id))
+  const seen = new Set<string>()
+  const layouts: PageTemplateRow[] = []
+
+  for (const row of [...(mine ?? []), ...(community ?? [])]) {
+    if (seen.has(row.id)) {
+      continue
+    }
+
+    seen.add(row.id)
+    layouts.push({ ...row, mine: authored.has(row.id) })
+  }
+
+  const moduleIcons: Record<string, { icon: string; name: string }> = {}
+  for (const entry of await listStoreModules(supabase)) {
+    moduleIcons[entry.manifest.id] = { icon: entry.manifest.icon, name: entry.manifest.name }
+  }
+
   // Only apps that actually have a public face can be blocks on the page.
   const blocks: Block[] = (installs ?? [])
-    .map((install) => ({ install, manifest: getModule(install.module_id) }))
+    .map((install) => ({ install, manifest: installManifest(install) }))
     .filter((entry): entry is Block => Boolean(entry.manifest?.publicSurface))
 
   return (
@@ -102,11 +126,7 @@ export default async function DesignPage({
       {active === 'blocks' ? <BlockManager blocks={blocks} /> : null}
       {active === 'design' ? <ThemeEditor initial={coerceTheme(profile.theme)} /> : null}
       {active === 'layouts' ? (
-        <LayoutGallery
-          builtins={BUILTIN_TEMPLATES}
-          community={community ?? []}
-          mine={mine ?? []}
-        />
+        <LayoutGallery templates={layouts} moduleIcons={moduleIcons} />
       ) : null}
     </div>
   )

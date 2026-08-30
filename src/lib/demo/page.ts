@@ -1,4 +1,4 @@
-import { getModule } from '@/lib/modules/registry'
+import { getBuiltinModule } from '@/lib/modules/builtins'
 import type { InstallRow, ProfileRow, RecordRow } from '@/lib/supabase/types'
 import type { ModuleManifest } from '@/lib/modules/spec'
 
@@ -20,13 +20,15 @@ function install(
   moduleId: string,
   overrides: Partial<InstallRow> & { name: string; public_position: number },
 ): InstallRow {
-  const manifest = getModule(moduleId)!
+  const manifest = getBuiltinModule(moduleId)!
 
   return {
     id: `install-${moduleId}`,
     owner_id: 'demo-owner',
     module_id: moduleId,
     module_version: manifest.version,
+    listing_id: null,
+    manifest,
     slug: moduleId,
     config: {},
     granted_permissions: manifest.permissions,
@@ -110,7 +112,7 @@ export function demoBlocks(): DemoBlock[] {
   return [
     {
       install: socials,
-      manifest: getModule('social-links')!,
+      manifest: getBuiltinModule('social-links')!,
       records: records(socials.id, 'profiles', [
         { network: 'instagram', url: 'https://instagram.com/example', visible: true },
         { network: 'linkedin', url: 'https://linkedin.com/in/example', visible: true },
@@ -120,7 +122,7 @@ export function demoBlocks(): DemoBlock[] {
     },
     {
       install: actions,
-      manifest: getModule('action-buttons')!,
+      manifest: getBuiltinModule('action-buttons')!,
       records: records(actions.id, 'actions', [
         { label: 'Call me', icon: 'phone', url: 'https://example.com/call', style: 'primary', visible: true },
         { label: 'Message', icon: 'message', url: 'https://example.com/chat', style: 'primary', visible: true },
@@ -130,7 +132,7 @@ export function demoBlocks(): DemoBlock[] {
     },
     {
       install: listings,
-      manifest: getModule('listings')!,
+      manifest: getBuiltinModule('listings')!,
       records: records(listings.id, 'properties', [
         {
           title: '12 Alder Street',
@@ -170,7 +172,7 @@ export function demoBlocks(): DemoBlock[] {
     },
     {
       install: faq,
-      manifest: getModule('faq')!,
+      manifest: getBuiltinModule('faq')!,
       records: records(faq.id, 'entries', [
         {
           question: 'Do you cover areas outside Northside?',
@@ -192,7 +194,7 @@ export function demoBlocks(): DemoBlock[] {
     },
     {
       install: enquiries,
-      manifest: getModule('lead-capture')!,
+      manifest: getBuiltinModule('lead-capture')!,
       records: [],
     },
   ]

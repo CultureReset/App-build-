@@ -12,7 +12,7 @@ const manifest: ModuleManifest = {
   category: 'operations',
   author: { name: 'Platform', handle: 'platform' },
   pricing: { model: 'free', amountCents: 0 },
-  permissions: ['public_page', 'collect_submissions', 'store_records'],
+  permissions: ['public_page', 'collect_submissions', 'store_records', 'generate_qr'],
   settings: [
     {
       key: 'accepting',

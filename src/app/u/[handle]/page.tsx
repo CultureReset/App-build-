@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest } from '@/lib/modules/catalogue'
 import { coerceTheme } from '@/lib/theme/spec'
 import PageShell from '@/components/public/PageShell'
 import ProfileHeader from '@/components/public/ProfileHeader'
@@ -39,7 +39,7 @@ async function loadPage(handle: string) {
     .order('created_at', { ascending: true })
     .returns<InstallRow[]>()
 
-  const visible = (installs ?? []).filter((install) => getModule(install.module_id)?.publicSurface)
+  const visible = (installs ?? []).filter((install) => installManifest(install)?.publicSurface)
 
   const { data: records } = visible.length
     ? await supabase
@@ -107,7 +107,7 @@ export default async function PublicProfilePage({
         ) : (
           <div className="pg-blocks mt-[var(--pg-block-gap)]">
             {installs.map((install) => {
-              const manifest = getModule(install.module_id)!
+              const manifest = installManifest(install)!
               const heading = install.public_heading ?? install.name
 
               return (

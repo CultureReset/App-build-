@@ -4,8 +4,9 @@ import { createHash } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getModule } from '@/lib/modules/registry'
+import { installManifest } from '@/lib/modules/catalogue'
 import { validatePublicRecord } from '@/lib/runtime/values'
+import type { InstallRow } from '@/lib/supabase/types'
 
 export type SubmitState = { error?: string; ok?: boolean }
 
@@ -50,9 +51,9 @@ export async function submitPublicRecord(
   // RLS only returns this row if the install is genuinely live and published.
   const { data: install } = await supabase
     .from('installs')
-    .select('id, module_id, accepting_submissions, public_write_collections')
+    .select('*')
     .eq('id', installId)
-    .maybeSingle()
+    .maybeSingle<InstallRow>()
 
   if (!install) {
     return { error: ERROR_COPY.not_found }
@@ -62,7 +63,7 @@ export async function submitPublicRecord(
     return { error: ERROR_COPY.closed }
   }
 
-  const manifest = getModule(install.module_id)
+  const manifest = installManifest(install)
   const surface = manifest?.publicSurface
 
   if (!manifest || !surface?.submitCollection) {

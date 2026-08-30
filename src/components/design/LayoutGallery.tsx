@@ -3,23 +3,19 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { applyTemplate, deleteLayout, publishLayout } from '@/app/dashboard/design/actions'
-import { getModule } from '@/lib/modules/registry'
-import { themeToCssVars, type Theme } from '@/lib/theme/spec'
-import type { PageTemplate } from '@/lib/theme/templates'
+import { coerceTheme, themeToCssVars, type Theme } from '@/lib/theme/spec'
 import type { PageTemplateRow } from '@/lib/supabase/types'
 
 type Entry = {
-  key: string
+  id: string
   name: string
   description: string
   category: string
   theme: Theme
   plan: { module_id: string }[]
-  builtinSlug?: string
-  templateId?: string
-  authorHandle?: string
-  useCount?: number
-  mine?: boolean
+  builtin: boolean
+  mine: boolean
+  useCount: number
 }
 
 function Swatches({ theme }: { theme: Theme }) {
@@ -51,13 +47,13 @@ function Swatches({ theme }: { theme: Theme }) {
  * nothing you already have is deleted.
  */
 export default function LayoutGallery({
-  builtins,
-  community,
-  mine,
+  templates,
+  moduleIcons,
 }: {
-  builtins: PageTemplate[]
-  community: PageTemplateRow[]
-  mine: PageTemplateRow[]
+  /** Built-in and user-published layouts alike — they are the same kind of row. */
+  templates: PageTemplateRow[]
+  /** Resolved on the server, since the catalogue lives in the database. */
+  moduleIcons: Record<string, { icon: string; name: string }>
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -66,49 +62,22 @@ export default function LayoutGallery({
   const [publishing, setPublishing] = useState(false)
   const [form, setForm] = useState({ name: '', description: '', category: 'general', isPublic: true })
 
-  const entries: Entry[] = [
-    ...builtins.map((template) => ({
-      key: `builtin:${template.slug}`,
-      name: template.name,
-      description: template.description,
-      category: template.category,
-      theme: template.theme,
-      plan: template.plan,
-      builtinSlug: template.slug,
-    })),
-    ...community.map((row) => ({
-      key: `community:${row.id}`,
-      name: row.name,
-      description: row.description,
-      category: row.category,
-      theme: row.theme as unknown as Theme,
-      plan: row.plan,
-      templateId: row.id,
-      useCount: row.use_count,
-      mine: mine.some((own) => own.id === row.id),
-    })),
-    ...mine
-      .filter((row) => !row.is_public)
-      .map((row) => ({
-        key: `mine:${row.id}`,
-        name: row.name,
-        description: row.description,
-        category: row.category,
-        theme: row.theme as unknown as Theme,
-        plan: row.plan,
-        templateId: row.id,
-        useCount: row.use_count,
-        mine: true,
-      })),
-  ]
+  const entries: Entry[] = templates.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    theme: coerceTheme(row.theme),
+    plan: row.plan,
+    builtin: row.is_builtin,
+    mine: row.mine === true,
+    useCount: row.use_count,
+  }))
 
   function apply(entry: Entry) {
     startTransition(async () => {
       setError(null)
-      const result = await applyTemplate({
-        builtinSlug: entry.builtinSlug,
-        templateId: entry.templateId,
-      })
+      const result = await applyTemplate(entry.id)
 
       if (result.error) {
         setError(result.error)
@@ -240,12 +209,12 @@ export default function LayoutGallery({
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {entries.map((entry) => (
-            <article key={entry.key} className="card flex flex-col p-4">
+            <article key={entry.id} className="card flex flex-col p-4">
               <Swatches theme={entry.theme} />
 
               <div className="mt-3 flex items-start justify-between gap-2">
                 <h3 className="font-medium">{entry.name}</h3>
-                {entry.builtinSlug ? (
+                {entry.builtin ? (
                   <span className="chip shrink-0 bg-ink-100 text-ink-600">Built in</span>
                 ) : entry.mine ? (
                   <span className="chip shrink-0 bg-brand-50 text-brand-700">Yours</span>
@@ -256,22 +225,22 @@ export default function LayoutGallery({
 
               <div className="mt-3 flex flex-wrap gap-1">
                 {entry.plan.slice(0, 6).map((block, index) => {
-                  const manifest = getModule(block.module_id)
+                  const known = moduleIcons[block.module_id]
 
                   return (
                     <span
                       key={`${block.module_id}-${index}`}
-                      title={manifest?.name ?? block.module_id}
+                      title={known?.name ?? block.module_id}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-sm"
                     >
-                      {manifest?.icon ?? '📦'}
+                      {known?.icon ?? '📦'}
                     </span>
                   )
                 })}
               </div>
 
               <div className="mt-4 border-t border-ink-100 pt-3">
-                {confirming === entry.key ? (
+                {confirming === entry.id ? (
                   <div className="space-y-2">
                     <p className="text-xs text-ink-600">
                       This will restyle your page and install any missing blocks. Your existing
@@ -300,23 +269,21 @@ export default function LayoutGallery({
                     <button
                       type="button"
                       className="btn-secondary text-xs"
-                      onClick={() => setConfirming(entry.key)}
+                      onClick={() => setConfirming(entry.id)}
                     >
                       Use this layout
                     </button>
 
                     <span className="flex items-center gap-2">
-                      {entry.useCount !== undefined ? (
-                        <span className="text-xs text-ink-400">{entry.useCount} uses</span>
-                      ) : null}
-                      {entry.mine && entry.templateId ? (
+                      <span className="text-xs text-ink-400">{entry.useCount} uses</span>
+                      {entry.mine ? (
                         <button
                           type="button"
                           className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50"
                           disabled={pending}
                           onClick={() =>
                             startTransition(async () => {
-                              await deleteLayout(entry.templateId!)
+                              await deleteLayout(entry.id)
                               router.refresh()
                             })
                           }

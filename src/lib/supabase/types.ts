@@ -72,3 +72,13 @@ export type TemplateBlock = {
   display_variant?: string
   heading?: string
 }
+
+export type AiCredentialRow = {
+  user_id: string
+  provider: string
+  api_key: string | null
+  base_url: string | null
+  model: string | null
+  created_at: string
+  updated_at: string
+}

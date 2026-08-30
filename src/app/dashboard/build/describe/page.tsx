@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { isAiConfigured } from '@/lib/ai/client'
+import { aiAvailability } from '@/lib/ai/resolve-config'
 import DescribeBuilder from '@/components/build/DescribeBuilder'
 
 export const metadata = { title: 'Describe your app' }
@@ -17,6 +17,8 @@ export default async function DescribePage() {
     redirect('/login')
   }
 
+  const available = await aiAvailability(supabase, user.id)
+
   return (
     <div className="mx-auto max-w-xl">
       <Link href="/dashboard/build" className="text-sm text-ink-500 hover:text-ink-900">
@@ -29,7 +31,7 @@ export default async function DescribePage() {
         change anything before it goes live.
       </p>
 
-      <DescribeBuilder configured={isAiConfigured()} />
+      <DescribeBuilder configured={available} />
     </div>
   )
 }

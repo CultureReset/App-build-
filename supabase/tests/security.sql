@@ -50,6 +50,7 @@ from public.installs where slug = 'leads';
 
 \echo '--- anonymous visitor ---'
 set role anon;
+reset request.jwt.claim.sub;
 select 'public listing rows visible: ' || count(*) from public.records where collection = 'properties';
 select 'PRIVATE ENQUIRY ROWS VISIBLE (must be 0): ' || count(*) from public.records where collection = 'enquiries';
 select 'published profiles visible: ' || count(*) from public.profiles;
@@ -101,6 +102,7 @@ reset role;
 
 \echo '--- anon INSERT with a REAL install id ---'
 set role anon;
+reset request.jwt.claim.sub;
 do $$
 declare real_install uuid;
 begin
@@ -177,6 +179,7 @@ end $$;
 reset role;
 update public.installs set accepting_submissions = false where slug = 'leads';
 set role anon;
+reset request.jwt.claim.sub;
 do $$
 declare leads uuid;
 begin
@@ -191,6 +194,7 @@ end $$;
 reset role;
 update public.profiles set page_published = false where handle = 'alice';
 set role anon;
+reset request.jwt.claim.sub;
 select 'rows visible on an unpublished page (must be 0): ' || count(*) from public.records;
 select 'installs visible on an unpublished page (must be 0): ' || count(*) from public.installs;
 reset role;
@@ -221,6 +225,7 @@ end $$;
 
 reset role;
 set role anon;
+reset request.jwt.claim.sub;
 do $$
 begin
   perform public.check_and_log_ai_generation();
@@ -241,3 +246,90 @@ exception
 end $$;
 
 reset role;
+
+\echo '--- ai_credentials isolation ---'
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+insert into public.ai_credentials (user_id, provider, api_key)
+values ('11111111-1111-1111-1111-111111111111', 'anthropic', 'sk-alice-secret');
+
+do $$
+begin
+  if exists (
+    select 1 from public.ai_credentials
+    where user_id = '11111111-1111-1111-1111-111111111111' and api_key = 'sk-alice-secret'
+  ) then
+    raise notice 'PASS: alice can read her own AI credential';
+  else
+    raise exception 'SECURITY FAILURE: alice cannot read her own AI credential';
+  end if;
+end $$;
+
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+
+do $$
+begin
+  if exists (select 1 from public.ai_credentials where user_id = '11111111-1111-1111-1111-111111111111') then
+    raise exception 'SECURITY FAILURE: mallory can read alice''s AI credential';
+  end if;
+  raise notice 'PASS: mallory cannot see alice''s AI credential exists at all';
+end $$;
+
+do $$
+begin
+  update public.ai_credentials
+  set api_key = 'sk-overwritten-by-mallory'
+  where user_id = '11111111-1111-1111-1111-111111111111';
+
+  if found then
+    raise exception 'SECURITY FAILURE: mallory overwrote alice''s AI credential';
+  end if;
+  raise notice 'PASS: mallory cannot modify alice''s AI credential';
+end $$;
+
+do $$
+begin
+  delete from public.ai_credentials where user_id = '11111111-1111-1111-1111-111111111111';
+  if found then
+    raise exception 'SECURITY FAILURE: mallory deleted alice''s AI credential';
+  end if;
+  raise notice 'PASS: mallory cannot delete alice''s AI credential';
+end $$;
+
+reset role;
+set role anon;
+reset request.jwt.claim.sub;
+do $$
+begin
+  if exists (select 1 from public.ai_credentials) then
+    raise exception 'SECURITY FAILURE: an anonymous caller can read AI credentials';
+  end if;
+  raise notice 'PASS: anonymous callers see no AI credentials at all';
+end $$;
+
+do $$
+begin
+  insert into public.ai_credentials (user_id, provider, api_key)
+  values ('22222222-2222-2222-2222-222222222222', 'openai', 'sk-injected');
+  raise exception 'SECURITY FAILURE: an anonymous caller inserted an AI credential';
+exception
+  when insufficient_privilege then
+    raise notice 'PASS: anonymous callers cannot insert an AI credential';
+end $$;
+
+reset role;
+
+\echo '--- a custom provider without a base URL is rejected at the database ---'
+do $$
+begin
+  insert into public.ai_credentials (user_id, provider, api_key)
+  values ('22222222-2222-2222-2222-222222222222', 'custom', 'sk-x');
+  raise exception 'SECURITY FAILURE: a custom provider was stored without a base URL';
+exception
+  when check_violation then
+    raise notice 'PASS: a custom provider without a base URL is rejected';
+end $$;

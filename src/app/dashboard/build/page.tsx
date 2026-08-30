@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listAuthoredModules } from '@/lib/modules/catalogue'
-import { isAiConfigured } from '@/lib/ai/client'
+import { aiAvailability } from '@/lib/ai/resolve-config'
 import NewModuleButton from '@/components/build/NewModuleButton'
 
 export const metadata = { title: 'Build' }
@@ -25,7 +25,7 @@ export default async function BuildPage() {
   }
 
   const entries = await listAuthoredModules(supabase, user.id)
-  const aiAvailable = isAiConfigured()
+  const aiAvailable = await aiAvailability(supabase, user.id)
 
   return (
     <div>

@@ -50,26 +50,54 @@ text leaves the device, exactly as if it had been typed.
 
 The model never writes code or markup. It fills in the same handful of choices
 the manual builder asks a person to make — name, fields, whether there's a
-public face — as one structured tool call. That gets checked twice before
-anything is saved:
+public face — returned as one structured object. That gets checked twice
+before anything is saved:
 
-1. **Schema check.** The tool call is parsed against a fixed shape (`AiDraft`)
-   built from the platform's own field-type and template enums, so the model
-   cannot propose a type or template that does not exist.
+1. **Schema check.** The response is required to match `AiDraft`, whose field
+   types and templates *are* the platform's own `fieldTypeSchema` and
+   `publicTemplateSchema` — not a hand-copied list, so they cannot drift apart.
 2. **Manifest validation.** The result is converted into the same `ModuleDraft`
    the manual builder edits and run through the identical `validateDraft` gate
-   every module passes through — the AI has no shortcut around it.
+   every module passes through. The AI has no shortcut around it.
 
 Accepting a proposal drops the user into the same manual builder from a normal
 click-through creation, fully editable, so a bad guess by the model is never a
 dead end. Refining is conversational: each follow-up sends the current draft
 back to the model with the new instruction and gets a patched proposal.
 
+### Any AI, not one AI
+
+Generation goes through the [Vercel AI SDK](https://github.com/vercel/ai)
+rather than a provider's own SDK, which is what makes the rest of this
+possible with one code path instead of five. `resolveModel()`
+(`src/lib/ai/resolve-model.ts`) turns a provider choice into the SDK's
+one uniform `LanguageModel` type; everything past that point — the prompt, the
+schema, the validation, the rate limiting — has no idea which provider it's
+talking to.
+
+The provider list itself is data (`src/lib/ai/providers.ts`), not a hardwired
+switch: Anthropic, OpenAI and Google natively, plus OpenRouter and a fully
+custom OpenAI-compatible endpoint — which covers self-hosted models (Ollama,
+LM Studio, vLLM), Azure OpenAI, and effectively anything else, since the
+OpenAI wire format is what most of the industry has converged on. Adding a
+provider means a registry entry and, for a native one, an SDK package — never
+a rewrite of how generation works.
+
+Every account configures this for themselves in **Settings → AI**
+(`/dashboard/settings/ai`): pick a provider, paste a key, done. A personal
+credential always takes priority over the deployment's own platform-wide
+default (set via environment variables), so nobody's account depends on
+anyone else's configuration, including the platform operator's. The stored
+key is never sent back to the browser — the settings screen only ever knows
+whether one is set, never what it is.
+
 Generation is rate-limited per account in the database (20/hour), the same way
 public form submissions are — an unmetered call to a paid API is a real cost
-and abuse surface, not just a UX nicety. Without an `ANTHROPIC_API_KEY` set,
-the "Describe it" entry point simply does not appear; manual building is
-unaffected either way.
+and abuse surface, not just a UX nicety. Without any provider configured —
+personal or platform — the "Describe it" entry point simply does not appear;
+manual building is unaffected either way.
+
+## The app builder
 
 ## The app builder
 
@@ -201,7 +229,8 @@ cp .env.example .env.local     # fill in the URL and anon key
 # 2. Apply the schema (Supabase SQL editor, or the CLI):
 #    every file in supabase/migrations, in order.
 #    0005 and 0006 seed the apps and layouts that ship with the platform.
-#    0008 adds AI-generation rate limiting (optional feature, safe to apply either way).
+#    0008 adds AI-generation rate limiting; 0009 adds per-account AI credentials.
+#    Both are optional features, safe to apply either way.
 
 npm run dev
 ```
@@ -230,7 +259,12 @@ src/components/runtime/          Generates admin UI from a manifest
 src/components/public/templates/ The ten public templates the runtime owns
 src/components/design/           The page studio: theme, blocks, layouts
 src/components/build/            The manual app builder, plus the describe-it chat and voice input
-src/lib/ai/                      The AI draft schema, model call, and the mapper into a ModuleDraft
+src/lib/ai/providers.ts          The provider registry — data, not a hardwired switch
+src/lib/ai/resolve-model.ts      Turns any provider config into one uniform LanguageModel
+src/lib/ai/resolve-config.ts     Personal credential first, platform env fallback second
+src/lib/ai/draft-schema.ts       What the model may propose — reuses the real spec's own enums
+src/lib/ai/generate.ts           The one, provider-agnostic generation call
+src/components/settings/         Per-account AI provider configuration
 scripts/                         Seed generators and the database test runner
 supabase/tests/                  Database security tests
 src/modules/<id>/manifest.ts     The apps themselves — declarations only
@@ -244,6 +278,9 @@ supabase/migrations/             Schema and Row Level Security
 
 - **Generating from an existing document or spreadsheet.** Only a plain-
   language description drives generation today.
+- **Per-request model swapping.** A model override string is supported per
+  credential (or per platform env var), but there is no picker over available
+  models within a provider.
 - **Custom code modules.** For rendering the templates cannot express, a
   sandboxed module type with scoped capabilities.
 - **Payments.** Author, price and pricing model already exist on listings.

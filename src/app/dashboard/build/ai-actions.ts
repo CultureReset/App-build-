@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { generateAppDraft, isAiConfigured } from '@/lib/ai/client'
+import { generateAppDraft } from '@/lib/ai/generate'
+import { resolveModel } from '@/lib/ai/resolve-model'
+import { aiAvailability, resolveProviderConfig } from '@/lib/ai/resolve-config'
 import { aiDraftToModuleDraft } from '@/lib/ai/map-draft'
 import { validateDraft, type ModuleDraft } from '@/lib/modules/derive'
 import type { AiDraft } from '@/lib/ai/draft-schema'
@@ -27,7 +29,8 @@ async function requireUser() {
 }
 
 export async function aiGenerationAvailable(): Promise<boolean> {
-  return isAiConfigured()
+  const { supabase, user } = await requireUser()
+  return aiAvailability(supabase, user.id)
 }
 
 /**
@@ -44,6 +47,16 @@ export async function proposeApp(input: {
   previous?: AiDraft
 }): Promise<ProposeState> {
   const { supabase, user } = await requireUser()
+
+  const resolved = await resolveProviderConfig(supabase, user.id)
+
+  if (!resolved) {
+    return {
+      ok: false,
+      error:
+        'No AI provider is set up yet. Add one — your own key, any provider — in AI settings.',
+    }
+  }
 
   const { error: limitError } = await supabase.rpc('check_and_log_ai_generation')
 
@@ -66,7 +79,14 @@ export async function proposeApp(input: {
     return { ok: false, error: 'Could not read your account.' }
   }
 
-  const result = await generateAppDraft({ prompt: input.prompt, previous: input.previous })
+  let model
+  try {
+    model = resolveModel(resolved.config)
+  } catch {
+    return { ok: false, error: 'Your AI provider is not fully configured. Check its settings.' }
+  }
+
+  const result = await generateAppDraft({ model, prompt: input.prompt, previous: input.previous })
 
   if ('error' in result) {
     return { ok: false, error: result.error }

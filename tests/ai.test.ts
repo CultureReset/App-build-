@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { aiDraftSchema, PROPOSE_APP_TOOL } from '../src/lib/ai/draft-schema.ts'
+import { aiDraftSchema } from '../src/lib/ai/draft-schema.ts'
 import { aiDraftToModuleDraft } from '../src/lib/ai/map-draft.ts'
 import { validateDraft } from '../src/lib/modules/derive.ts'
 
@@ -169,16 +169,17 @@ test('the model cannot propose a field type or template outside the real spec', 
   assert.equal(invalidTemplate.success, false)
 })
 
-test('the tool schema only ever offers real field types and templates', async () => {
+test('the AI draft schema can never offer a field type or template outside the real spec', async () => {
   const { fieldTypeSchema, publicTemplateSchema } = await import('../src/lib/modules/spec.ts')
 
-  const props = PROPOSE_APP_TOOL.input_schema.properties as Record<string, { enum?: string[] }>
-  const fieldTypeEnum = (
-    props.fields as unknown as {
-      items: { properties: { type: { enum: string[] } } }
-    }
-  ).items.properties.type.enum
+  // aiFieldSchema.type and aiDraftSchema's publicTemplate reuse these zod enums
+  // directly rather than a hand-copied list, so this holds by construction —
+  // this test guards against a future edit accidentally introducing a copy.
+  const fieldsShape = (aiDraftSchema.shape.fields.element as unknown as { shape: { type: unknown } })
+    .shape.type
+  assert.equal(fieldsShape, fieldTypeSchema)
 
-  assert.deepEqual(fieldTypeEnum, fieldTypeSchema.options)
-  assert.deepEqual(props.publicTemplate.enum, publicTemplateSchema.options)
+  const templateShape = aiDraftSchema.shape.publicTemplate
+  // publicTemplate is `.optional()`, so unwrap to the enum it wraps.
+  assert.equal((templateShape as unknown as { unwrap: () => unknown }).unwrap(), publicTemplateSchema)
 })

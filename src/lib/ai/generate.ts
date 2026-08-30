@@ -1,17 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { PROPOSE_APP_TOOL, aiDraftSchema, type AiDraft } from '@/lib/ai/draft-schema'
+import { generateObject, NoObjectGeneratedError, type LanguageModel } from 'ai'
+import { aiDraftSchema, type AiDraft } from '@/lib/ai/draft-schema'
 
-export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY)
-}
-
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
 const MAX_PROMPT_LENGTH = 2000
 
 const SYSTEM_PROMPT = `You turn a plain-language request into a definition for a small app on a
 no-code platform. You are not writing code — you are choosing, from a fixed
-set of building blocks, what the app stores and how it looks. Call the
-propose_app tool exactly once with your answer.
+set of building blocks, what the app stores and how it looks. Respond with
+exactly the structured object requested.
 
 Guidance:
 - Keep it to one collection of entries with a handful of well-chosen fields.
@@ -36,59 +31,52 @@ export type GenerateResult = { draft: AiDraft } | { error: string }
  * Proposes an app definition from a description, optionally refining a prior
  * proposal with new instructions.
  *
- * The model's raw output is never trusted: it is parsed against aiDraftSchema
- * here, and the caller still runs the result through full manifest validation
- * before anything can be saved. This function only ever returns a schema-
- * shaped draft or a message — never throws into calling code.
+ * Takes an already-resolved `LanguageModel` rather than owning any provider
+ * itself — the same call works identically whether that model was built from
+ * Anthropic, OpenAI, Google, OpenRouter, or a self-hosted endpoint. The schema
+ * that constrains the model's output is the same `aiDraftSchema` the rest of
+ * the platform validates against — generateObject builds the provider-specific
+ * request from it and validates the response against it, so there is no
+ * hand-maintained copy of the schema to drift out of sync.
+ *
+ * The model's output is still not trusted just because it parsed: the caller
+ * runs the result through full manifest validation before anything is saved.
+ * This function only ever returns a schema-shaped draft or a message — never
+ * throws into calling code.
  */
 export async function generateAppDraft(input: {
+  model: LanguageModel
   prompt: string
   previous?: AiDraft
 }): Promise<GenerateResult> {
-  if (!isAiConfigured()) {
-    return { error: 'App generation is not configured on this deployment yet.' }
-  }
-
   const prompt = input.prompt.trim().slice(0, MAX_PROMPT_LENGTH)
 
   if (prompt.length < 3) {
     return { error: 'Describe the app in a bit more detail.' }
   }
 
-  const userContent = input.previous
+  const userPrompt = input.previous
     ? `The app currently looks like this:\n${JSON.stringify(input.previous)}\n\nApply this change: ${prompt}`
     : `Build an app for: ${prompt}`
 
-  let response: Anthropic.Message
-
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-    response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2048,
+    const { object } = await generateObject({
+      model: input.model,
+      schema: aiDraftSchema,
+      schemaName: 'propose_app',
+      schemaDescription: 'A definition for a small business app.',
       system: SYSTEM_PROMPT,
-      tools: [PROPOSE_APP_TOOL],
-      tool_choice: { type: 'tool', name: 'propose_app' },
-      messages: [{ role: 'user', content: userContent }],
+      prompt: userPrompt,
     })
-  } catch {
-    return { error: 'Could not reach the app generator. Please try again.' }
+
+    return { draft: object }
+  } catch (error) {
+    if (NoObjectGeneratedError.isInstance(error)) {
+      return { error: 'Did not get back a usable app definition. Try rephrasing.' }
+    }
+
+    return {
+      error: 'Could not reach the app generator. Check your provider settings and try again.',
+    }
   }
-
-  const call = response.content.find(
-    (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
-  )
-
-  if (!call) {
-    return { error: 'Did not get back a usable app definition. Try rephrasing.' }
-  }
-
-  const parsed = aiDraftSchema.safeParse(call.input)
-
-  if (!parsed.success) {
-    return { error: 'The generated app definition was not valid. Try rephrasing your request.' }
-  }
-
-  return { draft: parsed.data }
 }

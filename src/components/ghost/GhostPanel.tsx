@@ -40,6 +40,8 @@ export default function GhostPanel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [log, setLog] = useState<LogEntry[]>([])
+  const [boxName, setBoxName] = useState('')
+  const [phrases, setPhrases] = useState<string[]>([]) // from the box's own map catalog
 
   const call = useCallback(async (method: 'GET' | 'POST', path: string, body?: unknown) => {
     const supabase = createClient()
@@ -101,7 +103,8 @@ export default function GhostPanel() {
   async function enrol() {
     setBusy(true)
     try {
-      setEnrolled(await call('POST', '/api/nodes', { name: 'Ghost' }))
+      setEnrolled(await call('POST', '/api/nodes', boxName.trim() ? { name: boxName.trim() } : {}))
+      setBoxName('')
       await load()
     } catch (err) {
       setError((err as Error).message)
@@ -127,6 +130,23 @@ export default function GhostPanel() {
   }
 
   const node = nodes?.find((n) => n.id === selected)
+  const nodeOnline = !!node && online(node)
+
+  // What this box can do comes from the box itself, never from this screen.
+  useEffect(() => {
+    setPhrases([])
+    if (!selected || !nodeOnline) return
+    let cancelled = false
+    ask('GET', '/capabilities')
+      .then((answer) => {
+        const byCapability: Record<string, string[]> = answer.response_body?.phrases ?? {}
+        if (!cancelled) setPhrases(Object.values(byCapability).flat())
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [selected, nodeOnline])
 
   return (
     <div className="space-y-6">
@@ -166,6 +186,13 @@ export default function GhostPanel() {
             {n.name} · {n.revoked_at ? 'revoked' : online(n) ? 'online' : 'offline'}
           </button>
         ))}
+        <input
+          className="rounded-lg border border-ink-200 px-3 py-1.5 text-sm"
+          value={boxName}
+          onChange={(e) => setBoxName(e.target.value)}
+          placeholder="Name the box (optional)"
+          maxLength={80}
+        />
         <button className="btn-ghost text-sm" onClick={enrol} disabled={busy}>
           + Enrol a box
         </button>
@@ -181,7 +208,7 @@ export default function GhostPanel() {
               className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder='Try "open display settings" or "text +1555… running late"'
+              placeholder={phrases.length ? `Try "${phrases[0]}"` : 'Tell your box what to do'}
               disabled={busy || !online(node)}
             />
             <button
@@ -192,6 +219,21 @@ export default function GhostPanel() {
               {busy ? 'Working…' : 'Send'}
             </button>
           </form>
+          {phrases.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-ink-500">
+              It understands:
+              {phrases.map((phrase) => (
+                <button
+                  key={phrase}
+                  type="button"
+                  className="rounded-full border border-ink-200 px-2 py-0.5"
+                  onClick={() => setText(phrase)}
+                >
+                  {phrase}
+                </button>
+              ))}
+            </div>
+          )}
           <ul className="space-y-2">
             {log.map((entry, i) => (
               <li key={i} className="rounded-lg bg-white p-3 text-sm ring-1 ring-ink-200">

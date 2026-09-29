@@ -11,8 +11,8 @@ schemas or security.
 (there is no Vercel project for it) and it needs a Supabase project, so no
 screenshot is included: a real one would need a live database, and a mocked one
 would show something that does not exist. Its pages are `/` , `/login`,
-`/signup`, `/dashboard` (your apps), `/dashboard/build` (+ `/describe`),
-`/dashboard/design`, `/dashboard/store`, `/dashboard/settings/ai`,
+`/signup`, `/dashboard` (your apps), `/dashboard/build` (+ `/describe`, and
+`/dashboard/build/[listingId]` to edit one app), `/dashboard/design`, `/dashboard/store`, `/dashboard/settings/ai`,
 `/dashboard/apps/[installId]`, `/dashboard/ghost` (My Ghost, the second door to a
 Ghost box through the same relay as the business dashboard), `/u/[handle]` and
 `/u/[handle]/[slug]` (public pages) and `/preview`.
@@ -28,6 +28,11 @@ connected: apps here are `module_listings` rows in its Supabase project, the Sto
 `store_items` in `cyber check`.
 
 ![Where this repo sits in the whole system](docs/images/where-it-fits.png)
+
+*The diagram draws the Modular app in the cloud next to the API. In fact it is not
+deployed, it reads and writes its own Supabase project directly
+(`src/lib/supabase/`), and it calls `gcr-api-clean` only for My Ghost
+(`src/components/ghost/GhostPanel.tsx`).*
 
 ## The idea in one paragraph
 
@@ -59,9 +64,13 @@ round-tripping every built-in app through the builder's own data shape. If a
 built-in could express something the builder cannot, that test fails.
 
 The one thing that is code is the set of rendering primitives — thirteen field
-types and ten public templates. Adding a template is two edits: write the
-component, add an entry to `src/lib/modules/templates.ts`. Nothing else in the
-codebase enumerates them, and the builder discovers them from that registry.
+types and ten public templates. Adding a template means writing the component
+and adding it in four places: the `publicTemplateSchema` enum and
+`TEMPLATE_VARIANTS` in `src/lib/modules/spec.ts`, `TEMPLATE_INFO` and
+`TEMPLATE_ORDER` in `src/lib/modules/templates.ts` (which the builder reads), and
+the `TEMPLATES` map in `src/components/public/PublicSurface.tsx`. The three maps
+are typed as complete records, so a missing entry fails `npm run typecheck`, and
+`tests/builder.test.ts` checks `TEMPLATE_ORDER`.
 
 ## Describe it, or speak it
 
@@ -123,15 +132,21 @@ manual building is unaffected either way.
 
 `/dashboard/build`. Name your app, declare the fields it stores, choose whether
 the public sees it and how, and it works: a full admin screen, real validation,
-a public block, its own URL and QR code. No code is written, generated or
+a public block, its own URL and QR code (the QR image is made by linking to
+`api.qrserver.com`, a third-party service that receives the page URL). No code is written, generated or
 deployed — which is exactly why installing an app a stranger built is safe.
 
 - **Permissions are derived, never declared.** What an app can do is worked out
   from what it actually does, so an author cannot understate their app's access.
 - **Public read/write flags are derived too**, so nobody exposes a collection by
   accident.
-- **Published versions are frozen.** Changes go into a new version that people
-  choose to move to.
+- **Published versions are meant to be frozen.** The builder offers "Start a new
+  version" for a published app (`createVersion`), and installs are never affected
+  by later edits because they run on their pinned manifest. The code does not,
+  however, stop an author saving edits to the published version itself
+  (`saveModule` in `src/app/dashboard/build/actions.ts`; the update policy in
+  `0004_modules_as_data.sql` only checks the author), so new installs of that
+  version get the edited manifest.
 - **Every install pins its manifest.** An author editing or deleting their app
   cannot change or break a copy already running on someone else's account.
 
@@ -289,6 +304,10 @@ scripts/                         Seed generators and the database test runner
 supabase/tests/                  Database security tests
 src/modules/<id>/manifest.ts     The apps themselves — declarations only
 src/app/dashboard/               Owner-facing screens and server actions
+src/components/ghost/            My Ghost panel (calls gcr-api-clean /api/nodes)
+src/lib/supabase/                Browser and server Supabase clients (anon key only)
+src/proxy.ts                     Session refresh; sends logged-out visitors from /dashboard to /login
+src/lib/demo/page.ts             Sample content for /preview
 src/app/u/[handle]/              The public layer
 src/app/preview/                 A live example of the public front end
 supabase/migrations/             Schema and Row Level Security

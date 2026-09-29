@@ -7,6 +7,28 @@ which ones the public sees. Every app is self-contained: installing, editing or
 removing one cannot affect any other. The owner never touches code, hosting,
 schemas or security.
 
+**Status.** A Next.js + Supabase app with its own login. It is **not deployed**
+(there is no Vercel project for it) and it needs a Supabase project, so no
+screenshot is included: a real one would need a live database, and a mocked one
+would show something that does not exist. Its pages are `/` , `/login`,
+`/signup`, `/dashboard` (your apps), `/dashboard/build` (+ `/describe`),
+`/dashboard/design`, `/dashboard/store`, `/dashboard/settings/ai`,
+`/dashboard/apps/[installId]`, `/dashboard/ghost` (My Ghost, the second door to a
+Ghost box through the same relay as the business dashboard), `/u/[handle]` and
+`/u/[handle]/[slug]` (public pages) and `/preview`.
+
+**One setting ties it to the rest of Ghost:** `NEXT_PUBLIC_GCR_API_BASE` (the
+relay in `gcr-api-clean`), and for My Ghost to work this app must share
+`gcr-api-clean`'s Supabase project (one login) with an account that owns a
+business there.
+
+It overlaps in purpose with the Store that now lives in `gcr-api-clean` (managed
+from the admin console and shown in `Dashboards-users-`). The two are not
+connected: apps here are `module_listings` rows in its Supabase project, the Store there is
+`store_items` in `cyber check`.
+
+![Where this repo sits in the whole system](docs/images/where-it-fits.png)
+
 ## The idea in one paragraph
 
 Most "AI builds your app" products generate a codebase per project. That makes
@@ -96,8 +118,6 @@ public form submissions are — an unmetered call to a paid API is a real cost
 and abuse surface, not just a UX nicety. Without any provider configured —
 personal or platform — the "Describe it" entry point simply does not appear;
 manual building is unaffected either way.
-
-## The app builder
 
 ## The app builder
 

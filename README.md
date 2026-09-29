@@ -34,13 +34,15 @@ deployed, it reads and writes its own Supabase project directly
 (`src/lib/supabase/`), and it calls `gcr-api-clean` only for My Ghost
 (`src/components/ghost/GhostPanel.tsx`).*
 
+
+
 <!-- branches:start -->
 ## Branches
 
 *Read from GitHub on 2026-09-29. 3 branches.*
 
-- **Default branch on GitHub:** `claude/modular-app-ecosystem-7xteeg`.
-- **`claude/repo-code-analysis-y4n1k7`** is where this README and the audit fixes live. It contains every commit on `claude/modular-app-ecosystem-7xteeg` and more (this README, the audit fixes and the screenshots).
+- **Default branch on GitHub:** `claude/modular-app-ecosystem-7xteeg`. It does **not** yet have this README or the audit fixes; those are on `claude/repo-code-analysis-y4n1k7`, which contains every commit of `claude/modular-app-ecosystem-7xteeg` and more, so it can be fast-forwarded without losing anything.
+- **`claude/repo-code-analysis-y4n1k7`** is where the README audit, the screenshots and the fixes were made.
 - Every other branch is already contained in `claude/repo-code-analysis-y4n1k7`; nothing is only on another branch.
 
 | Branch | Last commit | Not in the work branch | Last commit message |

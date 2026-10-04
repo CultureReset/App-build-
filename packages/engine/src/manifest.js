@@ -22,7 +22,14 @@ import { SEMVER, prepareVersion } from './store-rules.js'
 export const SCHEMA_VERSION = 1
 export const ENGINE_RUNTIME = 'engine'
 
-const ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$/
+/**
+ * The manifest id is the store item key, so it follows Paperclip's rule for
+ * one (server/src/routes/store.ts itemKeySchema, also services/store-content.ts):
+ * lowercase letters, digits and dashes, 1 to 80 characters. v1's own pattern
+ * allowed dots, which Paperclip refuses at publish time.
+ */
+const ID = /^[a-z0-9][a-z0-9-]*$/
+const ID_MAX = 80
 const PUBLISHER = /^[a-z][a-z0-9-]*$/
 const SLUG = /^[a-z][a-z0-9-]*$/
 const KEY = /^[a-z][a-z0-9_]*$/
@@ -141,7 +148,7 @@ function checkV1(m, c) {
     if (m[k] === undefined) add(k, 'is required.')
   }
   if (m.schema_version !== undefined && m.schema_version !== SCHEMA_VERSION) add('schema_version', `must be ${SCHEMA_VERSION}.`)
-  str(m.id, 'id', { max: 96, pattern: ID })
+  str(m.id, 'id', { max: ID_MAX, pattern: ID })
   str(m.name, 'name', { min: 1, max: 80 })
   str(m.summary, 'summary', { max: 200 })
   str(m.description, 'description', { max: 4000 })
@@ -158,7 +165,7 @@ function checkV1(m, c) {
     else {
       only(m.requires, ['platform', 'apps'], 'requires')
       str(m.requires.platform, 'requires.platform', { pattern: PLATFORM })
-      if (arr(m.requires.apps, 'requires.apps')) m.requires.apps.forEach((a, i) => str(a, `requires.apps[${i}]`, { pattern: ID, required: true }))
+      if (arr(m.requires.apps, 'requires.apps')) m.requires.apps.forEach((a, i) => str(a, `requires.apps[${i}]`, { max: ID_MAX, pattern: ID, required: true }))
     }
   }
 

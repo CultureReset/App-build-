@@ -25,7 +25,7 @@ test('v1: unknown top-level keys are refused', () => {
 })
 
 test('v1: id, publisher, version, schema_version patterns', () => {
-  assert.ok(has(sampleManifest({ id: 'nodash' }), 'id must match'))
+  assert.ok(has(sampleManifest({ id: 'with.dot' }), 'id must match'))
   assert.ok(has(sampleManifest({ publisher: 'Bad Name' }), 'publisher must match'))
   assert.ok(has(sampleManifest({ version: '1.0' }), 'version must match'))
   assert.ok(has(sampleManifest({ schema_version: 2 }), 'schema_version must be 1'))
@@ -198,4 +198,14 @@ test('v1: homepage is an http or https URI only', () => {
   }
   assert.equal(validateManifest(sampleManifest({ homepage: 'https://app.example.test/about' })).ok, true)
   assert.equal(validateManifest(sampleManifest({ homepage: 'http://app.example.test' })).ok, true)
+})
+
+test("v1: id follows Paperclip's item key rule (routes/store.ts itemKeySchema): lowercase, digits, dashes, at most 80", () => {
+  for (const bad of ['core.qr-menu', 'Core-Menu', 'menu_qr', '-menu', 'a'.repeat(81)]) {
+    assert.ok(has(sampleManifest({ id: bad }), 'id must'), bad)
+  }
+  for (const good of ['nodash', 'core-qr-menu', '1st-app', 'a'.repeat(80)]) {
+    assert.ok(!has(sampleManifest({ id: good }), 'id must'), good)
+  }
+  assert.ok(has(sampleManifest({ requires: { apps: ['other.app'] } }), 'requires.apps[0] must match'))
 })

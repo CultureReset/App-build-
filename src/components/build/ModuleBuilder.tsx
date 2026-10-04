@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import FieldEditor from '@/components/build/FieldEditor'
+import ManifestPanel from '@/components/build/ManifestPanel'
 import { blankField, keyFrom } from '@/lib/modules/field-key'
 import { createVersion, deleteModule, saveModule, setModuleVisibility } from '@/app/dashboard/build/actions'
 import { deriveManifest, validateDraft, type ModuleDraft } from '@/lib/modules/derive'
@@ -31,14 +32,22 @@ export default function ModuleBuilder({
   listingId,
   initial,
   visibility,
-  installCount,
-  published,
+  installCount = 0,
+  published = false,
+  storeMode = false,
 }: {
-  listingId: string
+  /** The module_listings row being edited (retired platform). Absent in store mode. */
+  listingId?: string
   initial: ModuleDraft
-  visibility: Visibility
-  installCount: number
-  published: boolean
+  visibility?: Visibility
+  installCount?: number
+  published?: boolean
+  /**
+   * The builder without App-build-'s own store: nothing is saved here; the
+   * sidebar turns the draft into an engine manifest to download or publish
+   * into the Paperclip store (ManifestPanel).
+   */
+  storeMode?: boolean
 }) {
   const router = useRouter()
   const [draft, setDraft] = useState<ModuleDraft>(initial)
@@ -113,6 +122,7 @@ export default function ModuleBuilder({
   function save() {
     startTransition(async () => {
       setError(null)
+      if (!listingId) return
       const result = await saveModule(listingId, draft)
 
       if (result.error) {
@@ -191,6 +201,9 @@ export default function ModuleBuilder({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
+            {/* Category and accent belong to the retired store's listing; the
+                engine manifest does not carry them. */}
+            {storeMode ? null : (
             <div>
               <label className="label" htmlFor="category">
                 Category
@@ -209,6 +222,9 @@ export default function ModuleBuilder({
               </select>
             </div>
 
+            )}
+
+            {storeMode ? null : (
             <div>
               <span className="label">Accent</span>
               <input
@@ -219,6 +235,7 @@ export default function ModuleBuilder({
                 onChange={(event) => set('accent', event.target.value)}
               />
             </div>
+            )}
 
             <div>
               <label className="label" htmlFor="version">
@@ -617,6 +634,10 @@ export default function ModuleBuilder({
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         ) : null}
 
+        {storeMode ? <ManifestPanel draft={draft} ready={validation.success} /> : null}
+
+        {storeMode || !listingId ? null : (
+        <>
         <button
           type="button"
           className="btn-primary w-full"
@@ -651,7 +672,7 @@ export default function ModuleBuilder({
               onClick={() =>
                 startTransition(async () => {
                   setError(null)
-                  const result = await setModuleVisibility(listingId, value)
+                  const result = await setModuleVisibility(listingId!, value)
                   if (result.error) setError(result.error)
                   router.refresh()
                 })
@@ -679,7 +700,7 @@ export default function ModuleBuilder({
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const result = await createVersion(listingId)
+                  const result = await createVersion(listingId!)
                   if (result.error) {
                     setError(result.error)
                     return
@@ -707,7 +728,7 @@ export default function ModuleBuilder({
                 disabled={pending}
                 onClick={() =>
                   startTransition(async () => {
-                    const result = await deleteModule(listingId)
+                    const result = await deleteModule(listingId!)
                     if (result.error) {
                       setError(result.error)
                       return
@@ -736,6 +757,8 @@ export default function ModuleBuilder({
             </button>
           )}
         </section>
+        </>
+        )}
       </aside>
     </div>
   )

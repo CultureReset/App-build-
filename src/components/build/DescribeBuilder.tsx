@@ -68,7 +68,22 @@ function DraftPreview({ draft, preview }: { draft: AiDraft; preview: ModuleDraft
   )
 }
 
-export default function DescribeBuilder({ configured }: { configured: boolean }) {
+export default function DescribeBuilder({
+  configured,
+  propose = proposeApp,
+  onAccept,
+  backHref = '/dashboard/build',
+}: {
+  configured: boolean
+  /** Which server action generates; the store-mode builder passes its own. */
+  propose?: typeof proposeApp
+  /**
+   * Store mode: hand the accepted draft to the caller (the builder on the same
+   * page) instead of saving it as a module_listings row.
+   */
+  onAccept?: (draft: ModuleDraft) => void
+  backHref?: string
+}) {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>([])
   const [prompt, setPrompt] = useState('')
@@ -90,7 +105,7 @@ export default function DescribeBuilder({ configured }: { configured: boolean })
     setTurns((current) => [...current, { role: 'user', text }])
 
     startTransition(async () => {
-      const result = await proposeApp({ prompt: text, previous: latestAssistant?.draft })
+      const result = await propose({ prompt: text, previous: latestAssistant?.draft })
 
       setTurns((current) => [
         ...current,
@@ -110,7 +125,7 @@ export default function DescribeBuilder({ configured }: { configured: boolean })
           This deployment does not have an AI provider configured. You can still build an app by
           hand — it takes the same few minutes either way.
         </p>
-        <Link href="/dashboard/build" className="btn-primary mt-4 inline-flex">
+        <Link href={backHref} className="btn-primary mt-4 inline-flex">
           Start from scratch instead
         </Link>
       </div>
@@ -182,7 +197,7 @@ export default function DescribeBuilder({ configured }: { configured: boolean })
 
       {latestAssistant ? (
         <div className="flex justify-end gap-2 border-t border-ink-100 pt-4">
-          <Link href="/dashboard/build" className="btn-secondary">
+          <Link href={backHref} className="btn-secondary">
             Discard
           </Link>
           <button
@@ -190,6 +205,10 @@ export default function DescribeBuilder({ configured }: { configured: boolean })
             className="btn-primary"
             disabled={creating}
             onClick={() => {
+              if (onAccept) {
+                onAccept(latestAssistant.preview)
+                return
+              }
               setCreating(true)
               startTransition(async () => {
                 const result = await createModuleFromAiDraft(latestAssistant.draft)
@@ -207,7 +226,7 @@ export default function DescribeBuilder({ configured }: { configured: boolean })
               })
             }}
           >
-            {creating ? 'Creating…' : 'Create this app'}
+            {onAccept ? 'Open in the builder' : creating ? 'Creating…' : 'Create this app'}
           </button>
         </div>
       ) : null}

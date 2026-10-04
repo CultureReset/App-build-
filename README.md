@@ -17,6 +17,33 @@ would show something that does not exist. Its pages are `/` , `/login`,
 Ghost box through the same relay as the business dashboard), `/u/[handle]` and
 `/u/[handle]/[slug]` (public pages) and `/preview`.
 
+## NEXT GENT: what this repo is now
+
+This repo is NEXT GENT's **shared app engine** and its **app builder** (plan §3, §7, §13).
+
+- **The engine** is `packages/engine` (`@nextgent/app-engine`): the manifest validator (app-manifest v1 +
+  the store's rules + an engine `ui` section), two renderers that turn (manifest, settings, data,
+  actions) into blocks, a React drawer for Play-user and gcr-unified, a plain-HTML drawer for static
+  public blocks, and a data adapter that only ever calls gcr-api-clean. No dependencies, no app names.
+  Its README documents the manifest, the views, the block vocabulary and the gcr-api-clean routes.
+- **The apps** that shipped here are converted to engine manifests in `apps/<name>/manifest.json`.
+  `src/modules/*/manifest.ts` stay as the builder's starting points and the retired store's seeds.
+- **The builder** (manual, describe-it, speak-it) is at `/build` with no login. It still edits the same
+  draft (`src/lib/modules/derive.ts`); its output is an engine manifest
+  (`src/lib/engine/from-module.ts`) to download or publish into Paperclip's store
+  (`POST /api/store/admin/items`, then `/versions`).
+- **Retired, switched off, not deleted:** App-build-'s own login, its own Supabase project and its own
+  store (`module_listings`, `installs`, `page_templates`), with the dashboard, page studio, public pages
+  and `/preview` that depend on them. Accounts are Paperclip's, business data is gcr-api-clean's, the
+  store is Paperclip's. `APP_BUILD_LEGACY_PLATFORM=on` turns all of it back on exactly as before
+  (`src/lib/legacy.ts`); off, those paths redirect to `/retired` (and `/dashboard/build` to `/build`),
+  and the server refuses to open a Supabase client.
+
+Checks: `npm test` (app tests + engine tests), `npm run typecheck`, `npm run lint` (ESLint CLI; `next
+lint` no longer exists in Next 16), `npm run build`.
+
+The rest of this README describes the retired platform as it was.
+
 **One setting ties it to the rest of Ghost:** `NEXT_PUBLIC_GCR_API_BASE` (the
 relay in `gcr-api-clean`), and for My Ghost to work this app must share
 `gcr-api-clean`'s Supabase project (one login) with an account that owns a

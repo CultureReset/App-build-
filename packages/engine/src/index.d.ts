@@ -210,7 +210,7 @@ export declare function createPublicAdapter(config: { baseUrl: string; installId
 export declare const APP_KIND: 'app'
 export interface StorePublication {
   item: { key: string; kind: string; name: string; summary?: string; description?: string; iconUrl?: string }
-  version: { version: string; channel?: string; advisoryType?: string; required?: boolean; changelog?: string; payload: { nextgent: { kind: 'app'; permissions: { permission: string; reason: string }[] }; app: Manifest } }
+  version: { version: string; channel?: string; advisoryType?: string; required?: boolean; changelog?: string; payload: { nextgent: { kind: 'app'; permissions: { permission: string; reason: string; optional?: boolean }[] }; app: Manifest } }
 }
 export declare function toStorePublication(manifest: unknown, release?: { kind?: string; channel?: string; advisoryType?: string; required?: boolean; changelog?: string }): ({ ok: true } & StorePublication) | { ok: false; errors: ValidationError[] }
 export declare function publishToStore(publication: StorePublication, target: { baseUrl: string; fetch?: FetchLike; headers?: Record<string, string>; credentials?: 'include' | 'same-origin' | 'omit' }): Promise<{ item: { id: string; key: string }; release: unknown }>

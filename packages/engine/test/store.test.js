@@ -13,10 +13,18 @@ test('a manifest becomes a Paperclip item and release', () => {
     kind: 'app',
     permissions: [
       { permission: 'things:read', reason: 'Shows the business things.' },
-      { permission: 'things:write', reason: 'Edits the business things.' },
+      { permission: 'things:write', reason: 'Edits the business things.', optional: true },
     ],
   })
   assert.equal(pub.version.payload.app.id, 'test-sample')
+})
+
+test('an optional permission stays optional in the release', () => {
+  const pub = toStorePublication(sampleManifest())
+  assert.equal(pub.ok, true)
+  const byId = Object.fromEntries(pub.version.payload.nextgent.permissions.map((p) => [p.permission, p]))
+  assert.equal(byId['things:write'].optional, true, 'optional: true is kept')
+  assert.equal('optional' in byId['things:read'], false, 'a permission declared without optional gains no key')
 })
 
 test('an invalid manifest is not published', () => {

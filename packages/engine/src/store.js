@@ -5,7 +5,7 @@
 //   POST {paperclip}/api/store/admin/items/:itemId/versions { version, channel, advisoryType, required, changelog?, payload }
 //
 // payload.nextgent is the section Paperclip reads for consent and for the
-// install token gcr-api-clean issues: { kind: 'app', permissions: [{ permission, reason }] }.
+// install token gcr-api-clean issues: { kind: 'app', permissions: [{ permission, reason, optional? }] }.
 // payload.app is the whole manifest, which the engine renders after install.
 
 import { validateManifest } from './manifest.js'
@@ -45,7 +45,7 @@ export function toStorePublication(manifest, release = {}) {
     payload: {
       nextgent: {
         kind: APP_KIND,
-        permissions: (m.permissions || []).map((p) => ({ permission: p.id, reason: p.reason })),
+        permissions: (m.permissions || []).map((p) => ({ permission: p.id, reason: p.reason, ...(p.optional !== undefined ? { optional: p.optional } : {}) })),
       },
       app: m,
     },

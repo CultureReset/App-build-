@@ -185,3 +185,18 @@ test('an owner-only field never reaches a visitor through a default slot (source
   // The owner still sees it.
   assert.ok(json(renderOwner(m, {}, sampleData())).includes('private-value'))
 })
+
+test('checkRecord: text in a number or money field is refused, not read as 0', () => {
+  const m = sampleManifest()
+  for (const raw of ['abc', '12abc', '-', '.', '1.2.3']) {
+    const r = checkRecord(m, 'notes', { title: 'T', count: raw, amount: raw })
+    assert.equal(r.ok, false, raw)
+    assert.ok(r.errors.count && r.errors.amount, raw)
+  }
+  // The ways people type numbers still read.
+  for (const [raw, want] of [['12', 12], [' 7 ', 7], ['1,000', 1000], ['€12.50', 12.5], ['-3', -3], [4, 4], ['.5', 0.5]]) {
+    const r = checkRecord(m, 'notes', { title: 'T', count: raw })
+    assert.equal(r.ok, true, String(raw))
+    assert.equal(r.data.count, want)
+  }
+})

@@ -76,7 +76,10 @@ function coerce(field, raw, lookups) {
     }
     case 'number':
     case 'money': {
-      const value = typeof raw === 'number' ? raw : Number(String(raw).replace(/[^\d.-]/g, ''))
+      // Typed numbers may carry spaces, thousands separators and a leading
+      // currency sign; anything else that is not a number is refused, never 0.
+      const text = typeof raw === 'number' ? raw : String(raw).replace(/[\s,]/g, '').replace(/^[^\d.-]+/, '')
+      const value = typeof text === 'number' ? text : /^-?(\d+\.?\d*|\.\d+)$/.test(text) ? Number(text) : NaN
       if (!Number.isFinite(value)) return { error: `${field.label} must be a number.` }
       if (field.min !== undefined && value < field.min) return { error: `${field.label} must be at least ${field.min}.` }
       if (field.max !== undefined && value > field.max) return { error: `${field.label} must be at most ${field.max}.` }

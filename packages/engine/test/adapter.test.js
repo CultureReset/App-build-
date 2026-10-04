@@ -17,8 +17,8 @@ function fakeFetch(handler) {
 
 const token = async ({ force }) => (force ? 'fresh-token' : 'install-token')
 
-test('only the business section routes exist in gcr-api-clean today', () => {
-  assert.deepEqual([...EXISTING_ROUTES], ['businessSection', 'businessRow'])
+test('every default route is served by gcr-api-clean', () => {
+  assert.deepEqual([...EXISTING_ROUTES], Object.keys(DEFAULT_ROUTES))
   assert.equal(DEFAULT_ROUTES.appTable, '/app-data/{table}')
 })
 

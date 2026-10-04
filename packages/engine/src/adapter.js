@@ -6,8 +6,7 @@
 // Two kinds of source (manifest ui.sources):
 //   business  the business's own data — /api/business/<section> (exists)
 //   app       records the app keeps for itself, in its own data space behind
-//             gcr-api-clean (plan §7) — /api/app-data/<table> (proposed;
-//             gcr-api-clean has no such route yet, see README "Routes")
+//             gcr-api-clean (plan §7) — /api/app-data/<table>
 //
 // `baseUrl` is wherever /api/* of gcr-api-clean is reachable from the caller:
 // gcr-api-clean's own /api, or a screen's proxy (Play-user's /biz).
@@ -16,22 +15,22 @@ import { checkRecord, sourcesFor } from './render.js'
 import { configKeys } from './store-rules.js'
 
 export const DEFAULT_ROUTES = Object.freeze({
-  // Exist in gcr-api-clean routes/business-data.js today.
+  // gcr-api-clean routes/business-data.js.
   businessSection: '/business/{section}',
   businessRow: '/business/{section}/{id}',
-  // Proposed: the per-app data space, scoped by the install token.
+  // gcr-api-clean routes/app-data.js: the per-app data space, scoped by the install token.
   appTable: '/app-data/{table}',
   appRow: '/app-data/{table}/{id}',
-  // Proposed: the install the token belongs to, and its settings.
+  // The install the token belongs to, and its settings.
   install: '/app-install',
   installSettings: '/app-install/settings',
-  // Proposed: what a visitor may read of a public install, and its append door.
+  // What a visitor may read of a public install, and its append door.
   publicApp: '/public/apps/{installId}',
   publicSubmit: '/public/apps/{installId}/{table}',
 })
 
 /** The routes above that gcr-api-clean already serves. */
-export const EXISTING_ROUTES = Object.freeze(['businessSection', 'businessRow'])
+export const EXISTING_ROUTES = Object.freeze(Object.keys(DEFAULT_ROUTES))
 
 export class AdapterError extends Error {
   constructor(message, { status = 0, body = null, path = '', errors = null } = {}) {

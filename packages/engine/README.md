@@ -17,7 +17,7 @@ screen action ──adapter──▶ gcr-api-clean /api/business/* · /api/app-d
 | File | What it is |
 | --- | --- |
 | `src/manifest.js` | `validateManifest`: app-manifest v1 checks, the store's version rules, the engine's own checks |
-| `src/store-rules.js` | `prepareVersion`, `permissionIds`, `configKeys`, `SEMVER` — identical to gcr-api-clean `lib/storeManifest.js` |
+| `src/store-rules.js` | `prepareVersion`, `permissionIds`, `configKeys`, `SEMVER` — **generated** from gcr-api-clean `lib/storeManifest.js` (see "Store rules"); do not edit |
 | `src/render.js` | `renderOwner`, `renderPublic`, `renderSurface`, `checkRecord`, `sourcesFor` — pure, data in, blocks out |
 | `src/blocks.js` | the block vocabulary and `checkBlocks` |
 | `src/values.js`, `src/format.js`, `src/copy.js` | field checks, display formatting (Intl, locale/currency from settings), the engine's own words |
@@ -140,11 +140,11 @@ const { settings, granted, data, errors } = await adapter.load(manifest, 'owner'
 | Route (under gcr-api-clean `/api`) | Used for | Exists |
 | --- | --- | --- |
 | `GET/POST /business/:section`, `PATCH/DELETE /business/:section/:id` | business sources | yes (`routes/business-data.js`, permissions per CONTRACT §6) |
-| `GET/POST /app-data/:table`, `PATCH/DELETE /app-data/:table/:id` | the app's own records, scoped by the install token's `install_id` | **no** |
-| `GET /app-install` → `{ installId, itemKey, version, settings, granted }` | the install behind the token | **no** |
-| `PUT /app-install/settings` `{ settings }` → `{ settings }` | saving settings (only `configKeys`) | **no** |
-| `GET /public/apps/:installId` → `{ settings, data }` | what a visitor may read (public views' sources only) | **no** |
-| `POST /public/apps/:installId/:table` | a visitor's form, into a table declared public `append` | **no** |
+| `GET/POST /app-data/:table`, `PATCH/DELETE /app-data/:table/:id` | the app's own records, scoped by the install token's `install_id` | yes (`routes/app-data.js`) |
+| `GET /app-install` → `{ installId, itemKey, version, settings, granted }` | the install behind the token | yes |
+| `PUT /app-install/settings` `{ settings }` → `{ settings }` | saving settings (only `configKeys`) | yes |
+| `GET /public/apps/:installId` → `{ settings, data }` | what a visitor may read (public views' sources only) | yes |
+| `POST /public/apps/:installId/:table` | a visitor's form, into a table declared public `append` | yes |
 
 Routes can be overridden (`routes: { … }`) if gcr-api-clean names them differently. A missing route
 shows as `err.notConnected` per source; it does not take the screen down.
@@ -195,6 +195,22 @@ meanwhile); and the non-plugin payload schema (`storePayloadSchema`, a zod objec
 does not know, so `payload.app` must be added to it to be kept. The `nextgent` section also has no
 `optional` flag, so optional permissions arrive as required.
 
+## Store rules
+
+The store's version rules have one editable copy: gcr-api-clean `lib/storeManifest.js`, the server
+that enforces them. `src/store-rules.js` is generated from it and committed:
+
+```
+npm run sync:store-rules            # regenerate (gcr-api-clean checked out beside this repo,
+                                    # or STORE_RULES_SOURCE=/path/to/storeManifest.js)
+npm run check:store-rules           # fails when out of date; skips when gcr-api-clean is absent
+```
+
+Why this way round: gcr-api-clean deploys on Vercel from its own repo with plain npm, which cannot
+install a package from a subdirectory of this repo, and the engine is not on a registry. A screen
+build needs nothing from gcr-api-clean, because the generated file is committed. `npm test` fails
+when the committed file does not match the source next to it.
+
 ## Tests
 
-`npm test` (from this folder) — validator, store rules, both renderers, HTML, React, adapter, store.
+`npm test` (from this folder) — validator, store rules (and that they match gcr-api-clean), both renderers, HTML, React, adapter, store.

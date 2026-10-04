@@ -7,20 +7,38 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "exports": {
-    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
-    "./react": { "types": "./src/react.d.ts", "default": "./src/react.js" },
-    "./html": { "types": "./src/index.d.ts", "default": "./src/html.js" },
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./react": {
+      "types": "./src/react.d.ts",
+      "default": "./src/react.js"
+    },
+    "./html": {
+      "types": "./src/index.d.ts",
+      "default": "./src/html.js"
+    },
     "./styles.css": "./src/styles.css"
   },
-  "files": ["src", "README.md"],
-  "sideEffects": ["./src/styles.css"],
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "sideEffects": [
+    "./src/styles.css"
+  ],
   "scripts": {
-    "test": "node --test 'test/*.test.js'"
+    "test": "node --test 'test/*.test.js'",
+    "sync:store-rules": "node scripts/sync-store-rules.mjs",
+    "check:store-rules": "node scripts/sync-store-rules.mjs --check"
   },
   "peerDependencies": {
     "react": ">=18"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true }
+    "react": {
+      "optional": true
+    }
   }
 }

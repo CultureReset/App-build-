@@ -1,6 +1,9 @@
-// Pins the behaviour of the rules copied from gcr-api-clean lib/storeManifest.js.
+// Pins the behaviour of the rules generated from gcr-api-clean lib/storeManifest.js.
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
+import { generate, sourcePath } from '../scripts/sync-store-rules.mjs'
 import { prepareVersion, permissionIds, configKeys, SEMVER } from '../src/store-rules.js'
 
 const item = { key: 'acme-app', kind: 'app', name: 'Acme', publisher: 'acme' }
@@ -39,4 +42,17 @@ test('permissionIds and configKeys read every shape', () => {
   assert.deepEqual(configKeys({ config: { properties: { c: {} } } }), ['c'])
   assert.deepEqual(configKeys({ config: { d: 1 } }), ['d'])
   assert.deepEqual(configKeys({}), [])
+})
+
+test('src/store-rules.js is generated from gcr-api-clean, unedited', (t) => {
+  const src = sourcePath()
+  if (!existsSync(src)) return t.skip(`no gcr-api-clean checkout at ${src}`)
+  const current = readFileSync(fileURLToPath(new URL('../src/store-rules.js', import.meta.url)), 'utf8')
+  assert.equal(current, generate(readFileSync(src, 'utf8')), 'out of date: run npm run sync:store-rules')
+})
+
+test('the generator refuses a source it cannot convert faithfully', () => {
+  assert.throws(() => generate("const x = require('y')\nmodule.exports = { x };"), /pure/)
+  assert.throws(() => generate('function a() {}\n'), /module\.exports/)
+  assert.throws(() => generate('function a() {}\nmodule.exports = { a, b };'), /b is exported/)
 })

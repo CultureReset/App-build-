@@ -18,6 +18,12 @@ export const ACTION_TYPES = [
 
 export const BUTTON_STYLES = ['primary', 'secondary', 'danger', 'ghost']
 export const TONES = ['default', 'muted', 'success', 'warning', 'danger']
+export const HEADING_LEVELS = [1, 2, 3]
+export const LIST_STYLES = ['list', 'cards', 'grid', 'feed']
+export const IMAGES_STYLES = ['grid', 'strip', 'feature']
+export const BUTTONS_STYLES = ['stack', 'inline', 'grid', 'icons']
+export const DETAILS_STYLES = ['accordion', 'list']
+export const FORM_STYLES = ['feature']
 export const INPUT_TYPES = [
   'text', 'longtext', 'number', 'money', 'boolean', 'select', 'date', 'time',
   'email', 'phone', 'url', 'image', 'color', 'secret',
@@ -57,7 +63,7 @@ export function checkBlocks(blocks, path = 'blocks', out = []) {
         break
       case 'heading':
         if (!isStr(b.text)) out.push(`${p}: needs text`)
-        if (![1, 2, 3].includes(b.level)) out.push(`${p}: level is 1, 2 or 3`)
+        if (!HEADING_LEVELS.includes(b.level)) out.push(`${p}: level is 1, 2 or 3`)
         break
       case 'text':
       case 'notice':
@@ -66,7 +72,7 @@ export function checkBlocks(blocks, path = 'blocks', out = []) {
         if (b.tone !== undefined && !TONES.includes(b.tone)) out.push(`${p}: unknown tone`)
         break
       case 'list':
-        if (!['list', 'cards', 'grid', 'feed'].includes(b.style)) out.push(`${p}: unknown list style`)
+        if (!LIST_STYLES.includes(b.style)) out.push(`${p}: unknown list style`)
         if (!Array.isArray(b.items)) out.push(`${p}: needs items`)
         else b.items.forEach((it, j) => {
           if (!isObj(it) || !isStr(it.title)) out.push(`${p}.items[${j}]: needs a title`)
@@ -89,19 +95,20 @@ export function checkBlocks(blocks, path = 'blocks', out = []) {
         if (!isStr(b.alt)) out.push(`${p}: needs alt text`)
         break
       case 'images':
-        if (!['grid', 'strip', 'feature'].includes(b.style)) out.push(`${p}: unknown images style`)
+        if (!IMAGES_STYLES.includes(b.style)) out.push(`${p}: unknown images style`)
         if (!Array.isArray(b.items) || !b.items.every((it) => isObj(it) && isStr(it.src) && isStr(it.alt))) out.push(`${p}: items are { src, alt }`)
         break
       case 'button':
         checkButton(b, p, out)
         break
       case 'buttons':
-        if (!['stack', 'inline', 'grid', 'icons'].includes(b.style)) out.push(`${p}: unknown buttons style`)
+        if (!BUTTONS_STYLES.includes(b.style)) out.push(`${p}: unknown buttons style`)
         if (!Array.isArray(b.items)) out.push(`${p}: needs items`)
         else b.items.forEach((it, j) => checkButton(it, `${p}.items[${j}]`, out))
         break
       case 'form':
         if (!isStr(b.id)) out.push(`${p}: needs an id`)
+        if (b.style !== undefined && !FORM_STYLES.includes(b.style)) out.push(`${p}: unknown form style`)
         if (!Array.isArray(b.fields)) out.push(`${p}: needs fields`)
         else b.fields.forEach((f, j) => {
           if (!isObj(f) || !isStr(f.key) || !isStr(f.label) || !INPUT_TYPES.includes(f.type)) out.push(`${p}.fields[${j}]: needs key, label and a known type`)
@@ -111,7 +118,7 @@ export function checkBlocks(blocks, path = 'blocks', out = []) {
         if (b.cancel !== undefined) checkButton(b.cancel, `${p}.cancel`, out)
         break
       case 'details':
-        if (!['accordion', 'list'].includes(b.style)) out.push(`${p}: unknown details style`)
+        if (!DETAILS_STYLES.includes(b.style)) out.push(`${p}: unknown details style`)
         if (!Array.isArray(b.items) || !b.items.every((it) => isObj(it) && isStr(it.summary) && isStr(it.body))) out.push(`${p}: items are { summary, body }`)
         break
       case 'embed':

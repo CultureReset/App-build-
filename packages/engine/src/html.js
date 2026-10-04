@@ -7,6 +7,7 @@
 // so each screen styles the blocks its own way.
 
 import { LINK_SCHEMES } from './values.js'
+import { BUTTON_STYLES, BUTTONS_STYLES, DETAILS_STYLES, FORM_STYLES, HEADING_LEVELS, IMAGES_STYLES, INPUT_TYPES, LIST_STYLES, TONES } from './blocks.js'
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 export function escapeHtml(value) {
@@ -41,7 +42,12 @@ const INPUT = { email: 'email', phone: 'tel', number: 'number', money: 'number',
 export function renderHtml(blocks, options = {}) {
   const prefix = options.prefix || 'ng'
   const base = options.headingBase || 2
-  const cls = (name, extra) => `${prefix}-${name}${extra ? ` ${prefix}-${name}--${extra}` : ''}`
+  // A modifier class comes only from the block vocabulary (blocks.js): an
+  // unknown value is dropped, and whatever is emitted is escaped as well.
+  const cls = (name, extra, allowed) => {
+    const modifier = extra !== undefined && (!allowed || allowed.includes(extra)) ? escapeHtml(extra) : ''
+    return `${prefix}-${name}${modifier ? ` ${prefix}-${name}--${modifier}` : ''}`
+  }
   const out = []
 
   const link = (href, inner, className) =>
@@ -50,13 +56,13 @@ export function renderHtml(blocks, options = {}) {
       : `<span class="${className}">${inner}</span>`
 
   const button = (b) => {
-    const style = escapeHtml(b.style || 'primary')
+    const style = BUTTON_STYLES.includes(b.style) ? b.style : 'primary'
     const icon = b.icon ? `<span class="${prefix}-icon" aria-hidden="true">${escapeHtml(b.icon)}</span>` : ''
     const label = `<span class="${prefix}-label">${escapeHtml(b.label)}</span>`
     const note = b.note ? `<span class="${prefix}-note">${escapeHtml(b.note)}</span>` : ''
-    if (b.href) return link(b.href, `${icon}${label}${note}`, `${cls('button', style)}`)
+    if (b.href) return link(b.href, `${icon}${label}${note}`, cls('button', style, BUTTON_STYLES))
     // Actions need a live screen; static HTML shows the label only.
-    return `<span class="${cls('button', style)}" aria-disabled="true">${icon}${label}</span>`
+    return `<span class="${cls('button', style, BUTTON_STYLES)}" aria-disabled="true">${icon}${label}</span>`
   }
 
   const field = (f, value, error, formId) => {
@@ -81,7 +87,7 @@ export function renderHtml(blocks, options = {}) {
     }
     const help = f.help ? `<span class="${prefix}-help">${escapeHtml(f.help)}</span>` : ''
     const err = error ? `<span class="${prefix}-error" role="alert">${escapeHtml(error)}</span>` : ''
-    return `<label class="${cls('field', f.type)}" for="${id}"><span class="${prefix}-field-label">${escapeHtml(f.label)}</span>${control}${help}${err}</label>`
+    return `<label class="${cls('field', f.type, INPUT_TYPES)}" for="${id}"><span class="${prefix}-field-label">${escapeHtml(f.label)}</span>${control}${help}${err}</label>`
   }
 
   const walk = (list, depth) => {
@@ -96,15 +102,15 @@ export function renderHtml(blocks, options = {}) {
           break
         }
         case 'heading': {
-          const level = Math.min(6, base + b.level - 1)
+          const level = Math.min(6, base + (HEADING_LEVELS.includes(b.level) ? b.level : HEADING_LEVELS[0]) - 1)
           out.push(`<h${level} class="${cls('heading')}">${escapeHtml(b.text)}</h${level}>`)
           break
         }
         case 'text':
-          out.push(`<p class="${cls('text', b.tone)}">${escapeHtml(b.text)}</p>`)
+          out.push(`<p class="${cls('text', b.tone, TONES)}">${escapeHtml(b.text)}</p>`)
           break
         case 'notice':
-          out.push(`<p class="${cls('notice', b.tone)}" role="status">${escapeHtml(b.text)}</p>`)
+          out.push(`<p class="${cls('notice', b.tone, TONES)}" role="status">${escapeHtml(b.text)}</p>`)
           break
         case 'empty':
           out.push(`<p class="${cls('empty')}">${escapeHtml(b.text)}</p>`)
@@ -113,7 +119,7 @@ export function renderHtml(blocks, options = {}) {
           out.push(`<hr class="${cls('divider')}">`)
           break
         case 'list': {
-          out.push(`<ul class="${cls('list', b.style)}">`)
+          out.push(`<ul class="${cls('list', b.style, LIST_STYLES)}">`)
           for (const it of b.items || []) {
             const parts = []
             if (it.image && okSrc(it.image.src)) parts.push(`<img class="${prefix}-item-image" src="${escapeHtml(it.image.src)}" alt="${escapeHtml(it.image.alt || '')}" loading="lazy">`)
@@ -151,7 +157,7 @@ export function renderHtml(blocks, options = {}) {
           }
           break
         case 'images': {
-          out.push(`<ul class="${cls('images', b.style)}">`)
+          out.push(`<ul class="${cls('images', b.style, IMAGES_STYLES)}">`)
           for (const it of b.items || []) {
             if (!okSrc(it.src)) continue
             const img = `<img src="${escapeHtml(it.src)}" alt="${escapeHtml(it.alt)}" loading="lazy">`
@@ -165,15 +171,15 @@ export function renderHtml(blocks, options = {}) {
           out.push(button(b))
           break
         case 'buttons':
-          out.push(`<div class="${cls('buttons', b.style)}">${(b.items || []).map(button).join('')}</div>`)
+          out.push(`<div class="${cls('buttons', b.style, BUTTONS_STYLES)}">${(b.items || []).map(button).join('')}</div>`)
           break
         case 'details':
           if (b.style === 'list') {
-            out.push(`<dl class="${cls('details', 'list')}">`)
+            out.push(`<dl class="${cls('details', 'list', DETAILS_STYLES)}">`)
             for (const it of b.items || []) out.push(`<dt>${escapeHtml(it.summary)}</dt><dd>${escapeHtml(it.body)}</dd>`)
             out.push('</dl>')
           } else {
-            out.push(`<div class="${cls('details', 'accordion')}">`)
+            out.push(`<div class="${cls('details', 'accordion', DETAILS_STYLES)}">`)
             for (const it of b.items || []) out.push(`<details><summary>${escapeHtml(it.summary)}</summary><p>${escapeHtml(it.body)}</p></details>`)
             out.push('</div>')
           }
@@ -186,11 +192,11 @@ export function renderHtml(blocks, options = {}) {
         case 'form': {
           const target = typeof options.formAction === 'function' ? options.formAction(b.submit?.action, b) : null
           const attrs = target ? ` method="post" action="${escapeHtml(target)}"` : ''
-          out.push(`<form class="${cls('form', b.style)}"${attrs}>`)
+          out.push(`<form class="${cls('form', b.style, FORM_STYLES)}"${attrs}>`)
           if (b.intro) out.push(`<p class="${prefix}-form-intro">${escapeHtml(b.intro)}</p>`)
           if (b.errors?._form) out.push(`<p class="${prefix}-error" role="alert">${escapeHtml(b.errors._form)}</p>`)
           for (const f of b.fields || []) out.push(field(f, b.values?.[f.key], b.errors?.[f.key], b.id))
-          if (!b.readOnly) out.push(`<button type="submit" class="${cls('button', 'primary')}"${target ? '' : ' disabled'}>${escapeHtml(b.submit?.label || '')}</button>`)
+          if (!b.readOnly) out.push(`<button type="submit" class="${cls('button', 'primary', BUTTON_STYLES)}"${target ? '' : ' disabled'}>${escapeHtml(b.submit?.label || '')}</button>`)
           out.push('</form>')
           break
         }

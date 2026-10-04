@@ -49,3 +49,24 @@ test('owner blocks draw too (tables, notices), with a custom prefix', () => {
 test('unknown block types are skipped', () => {
   assert.equal(renderHtml([{ type: 'hologram' }, { type: 'divider' }]), '<hr class="ng-divider">')
 })
+
+test('enumerated block props (tone, style, field type, heading level) are whitelisted, never interpolated raw', () => {
+  const payload = '" onmouseover="alert(1)'
+  const html = renderHtml([
+    { type: 'text', text: 't', tone: payload },
+    { type: 'notice', text: 'n', tone: payload },
+    { type: 'heading', text: 'h', level: payload },
+    { type: 'list', style: payload, items: [{ title: 'a' }] },
+    { type: 'images', style: payload, items: [{ src: 'https://img.example.test/1.png', alt: 'a' }] },
+    { type: 'button', label: 'b', href: 'https://example.test', style: payload },
+    { type: 'buttons', style: payload, items: [{ label: 'b', href: 'https://example.test' }] },
+    { type: 'details', style: payload, items: [{ summary: 's', body: 'b' }] },
+    { type: 'form', id: 'f', style: payload, fields: [{ key: 'k', label: 'K', type: payload }], values: {}, submit: { label: 'Go', action: { type: 'form.submit' } } },
+  ])
+  assert.ok(!html.includes('onmouseover'), html)
+  assert.ok(!html.includes(payload))
+  assert.ok(!/<h(NaN|undefined)/.test(html))
+  // Known values still come through as modifiers.
+  const good = renderHtml([{ type: 'text', text: 't', tone: 'muted' }, { type: 'list', style: 'cards', items: [] }])
+  assert.ok(good.includes('ng-text--muted') && good.includes('ng-list--cards'))
+})

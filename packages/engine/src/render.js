@@ -490,9 +490,9 @@ export function sourcesFor(manifest, which = 'owner') {
  * Check a record before it is sent: the same rules on every screen. Visitor
  * writes lose owner-only fields (reset to their defaults).
  */
-export function checkRecord(manifest, sourceKey, values, { visitor = false, data } = {}) {
+export function checkRecord(manifest, sourceKey, values, { visitor = false, partial = false, data } = {}) {
   const source = manifest?.ui?.sources?.[sourceKey]
   if (!source) return { ok: false, errors: { _form: `Unknown source "${sourceKey}".` } }
   const ctx = context(manifest, {}, data || {}, {}, {})
-  return checkValues(source.fields, values, { visitor, lookups: ctx.lookupsBySource[sourceKey] })
+  return checkValues(source.fields, values, { visitor, partial, lookups: ctx.lookupsBySource[sourceKey] })
 }

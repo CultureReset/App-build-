@@ -150,3 +150,15 @@ test('a visitor form with an optionsFrom select is checked against the public in
   assert.equal(String(row.group_id), '2')
   await assert.rejects(pub.submit(m, 'notes', { title: 'Hello', group_id: '9' }), (err) => err.status === 422 && Boolean(err.errors.group_id))
 })
+
+test('update is a PATCH: only the fields in the payload are checked and sent, nothing else is wiped', async () => {
+  const fetch = fakeFetch(({ body }) => ({ body: { row: { id: 't1', ...body } } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  await adapter.update(sampleManifest(), 'things', 't1', { name: 'One!' })
+  assert.deepEqual(fetch.calls[0].body, { name: 'One!' }, 'price and group_id are not sent as null')
+  // A field that is in the payload is still checked.
+  await assert.rejects(adapter.update(sampleManifest(), 'things', 't1', { name: '' }), (err) => err.status === 422 && Boolean(err.errors.name))
+  // Blanking an optional field on purpose still goes through as null.
+  await adapter.update(sampleManifest(), 'notes', 'n1', { body: '' })
+  assert.deepEqual(fetch.calls[1].body, { body: null })
+})

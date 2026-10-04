@@ -218,9 +218,10 @@ export function createGcrAdapter(config) {
       return rowFrom(await request('POST', pathFor(source), { body }))
     },
 
+    /** A PATCH: only the fields in `values` are checked and sent; the rest of the row is untouched. */
     async update(manifest, key, id, values, { data } = {}) {
       const source = sourceOf(manifest, key)
-      const checked = checkRecord(manifest, key, values, { data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
+      const checked = checkRecord(manifest, key, values, { partial: true, data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       return rowFrom(await request('PATCH', pathFor(source, id), { body: checked.data }))
     },

@@ -135,15 +135,18 @@ function coerce(field, raw, lookups) {
  * Check input against declared fields.
  * @param {object[]} fields
  * @param {Record<string, unknown>} input
- * @param {{ visitor?: boolean, lookups?: Record<string, {value, label}[]> }} [options]
+ * @param {{ visitor?: boolean, partial?: boolean, lookups?: Record<string, {value, label}[]> }} [options]
+ *   partial: only the fields present in `input` are checked and returned (a
+ *   PATCH); absent fields are left as they are rather than blanked.
  * @returns {{ ok: true, data: Record<string, unknown> } | { ok: false, errors: Record<string, string> }}
  */
-export function checkValues(fields, input, { visitor = false, lookups } = {}) {
+export function checkValues(fields, input, { visitor = false, partial = false, lookups } = {}) {
   const data = {}
   const errors = {}
   const source = input && typeof input === 'object' ? input : {}
   for (const field of fields) {
     if (field.readOnly) continue
+    if (partial && !Object.prototype.hasOwnProperty.call(source, field.key)) continue
     if (visitor && field.ownerOnly) {
       // Re-applied from the declaration: a visitor cannot set it.
       data[field.key] = field.default !== undefined ? field.default : null

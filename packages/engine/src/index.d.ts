@@ -157,10 +157,10 @@ export declare function renderPublic(manifest: Manifest, settings: Record<string
 export declare function renderSurface(manifest: Manifest, surfaceId: string, settings: Record<string, unknown> | null | undefined, data: Rows | null | undefined, actions?: ActionState, options?: RenderOptions): Block[]
 export declare function surfacesOf(manifest: Manifest): { owner: string[]; public: string[]; other: string[] }
 export declare function sourcesFor(manifest: Manifest, which?: 'owner' | 'public' | string): string[]
-export declare function checkRecord(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { visitor?: boolean; data?: Rows }): { ok: true; data: Record<string, unknown> } | { ok: false; errors: Record<string, string> }
+export declare function checkRecord(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { visitor?: boolean; partial?: boolean; data?: Rows }): { ok: true; data: Record<string, unknown> } | { ok: false; errors: Record<string, string> }
 export declare function embedSrc(raw: string, providers?: EmbedProvider[]): string | null
 
-export declare function checkValues(fields: Field[], input: Record<string, unknown>, options?: { visitor?: boolean; lookups?: Record<string, FieldOption[]> }): { ok: true; data: Record<string, unknown> } | { ok: false; errors: Record<string, string> }
+export declare function checkValues(fields: Field[], input: Record<string, unknown>, options?: { visitor?: boolean; partial?: boolean; lookups?: Record<string, FieldOption[]> }): { ok: true; data: Record<string, unknown> } | { ok: false; errors: Record<string, string> }
 export declare function blankValues(fields: Field[]): Record<string, unknown>
 export declare function settingsWithDefaults(manifest: Manifest, settings: unknown): Record<string, unknown>
 export declare function settingsFields(manifest: Manifest): (Field & { secret?: boolean })[]

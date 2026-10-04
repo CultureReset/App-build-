@@ -190,8 +190,9 @@ export interface OwnerAdapter {
   install(): Promise<{ installId: string; itemKey?: string; version?: string; settings?: Record<string, unknown>; granted?: string[] }>
   list(manifest: Manifest, source: string): Promise<Record<string, unknown>[]>
   load(manifest: Manifest, which?: string): Promise<LoadResult>
-  create(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { rows?: Record<string, unknown>[] }): Promise<Record<string, unknown>>
-  update(manifest: Manifest, source: string, id: string, values: Record<string, unknown>): Promise<Record<string, unknown>>
+  /** `data`: rows already loaded (optionsFrom sources are read when absent). */
+  create(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { rows?: Record<string, unknown>[]; data?: Rows }): Promise<Record<string, unknown>>
+  update(manifest: Manifest, source: string, id: string, values: Record<string, unknown>, options?: { data?: Rows }): Promise<Record<string, unknown>>
   remove(manifest: Manifest, source: string, id: string): Promise<true>
   move(manifest: Manifest, source: string, rows: Record<string, unknown>[], id: string, direction: 'up' | 'down'): Promise<boolean>
   saveSettings(manifest: Manifest, values: Record<string, unknown>): Promise<Record<string, unknown>>
@@ -199,7 +200,7 @@ export interface OwnerAdapter {
 export interface PublicAdapter {
   routes: Record<string, string>
   load(): Promise<LoadResult>
-  submit(manifest: Manifest, source: string, values: Record<string, unknown>): Promise<Record<string, unknown>>
+  submit(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { data?: Rows }): Promise<Record<string, unknown>>
 }
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>
 export declare function createGcrAdapter(config: { baseUrl: string; getToken: (o: { force: boolean }) => Promise<string>; fetch?: FetchLike; routes?: Partial<typeof DEFAULT_ROUTES>; timeoutMs?: number }): OwnerAdapter

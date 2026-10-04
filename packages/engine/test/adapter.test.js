@@ -116,3 +116,37 @@ test('network failure is an AdapterError with status 0', async () => {
   const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch: async () => { throw new Error('offline') } })
   await assert.rejects(adapter.list(sampleManifest(), 'things'), (err) => err instanceof AdapterError && err.status === 0)
 })
+
+test('a select with optionsFrom is checked against the rows of its source, loaded as the renderer would', async () => {
+  const data = sampleData()
+  const fetch = fakeFetch(({ url, method, body }) => {
+    if (url.includes('/business/thing_groups')) return { body: { rows: data.groups } }
+    return { status: method === 'POST' ? 201 : 200, body: { row: { id: 't1', ...body } } }
+  })
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  // Valid reference: saved, with the group source read first.
+  const row = await adapter.update(sampleManifest(), 'things', 't1', { name: 'One', group_id: 2 })
+  assert.equal(row.group_id, 2)
+  assert.ok(fetch.calls.some((c) => c.url === '/biz/business/thing_groups' && c.method === 'GET'))
+  const write = fetch.calls.find((c) => c.method === 'PATCH')
+  assert.equal(write.body.group_id, 2)
+  // Invalid reference: refused before anything is written.
+  const before = fetch.calls.length
+  await assert.rejects(adapter.create(sampleManifest(), 'things', { name: 'New', group_id: 9 }), (err) => err.status === 422 && Boolean(err.errors.group_id))
+  assert.ok(!fetch.calls.slice(before).some((c) => c.method === 'POST'))
+  // Rows already in hand are used instead of a second read.
+  const n = fetch.calls.length
+  await adapter.create(sampleManifest(), 'things', { name: 'New', group_id: 1 }, { data: { groups: data.groups } })
+  assert.ok(!fetch.calls.slice(n).some((c) => c.method === 'GET'))
+})
+
+test('a visitor form with an optionsFrom select is checked against the public install data', async () => {
+  const m = sampleManifest()
+  m.data.tables.notes.columns.group_id = { type: 'integer' }
+  m.ui.sources.notes.fields.push({ key: 'group_id', label: 'Group', type: 'select', optionsFrom: { source: 'groups', label: 'name' } })
+  const fetch = fakeFetch(({ method, body }) => (method === 'GET' ? { body: { settings: {}, data: { notes: [], groups: sampleData().groups } } } : { status: 201, body: { row: body } }))
+  const pub = createPublicAdapter({ baseUrl: '/api', installId: 'i1', fetch })
+  const row = await pub.submit(m, 'notes', { title: 'Hello', group_id: '2' })
+  assert.equal(String(row.group_id), '2')
+  await assert.rejects(pub.submit(m, 'notes', { title: 'Hello', group_id: '9' }), (err) => err.status === 422 && Boolean(err.errors.group_id))
+})

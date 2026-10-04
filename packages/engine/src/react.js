@@ -288,8 +288,8 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
         if (action.type === 'record.create' || action.type === 'record.update') {
           const checked = checkRecord(manifest, action.source, values, { data: state.data })
           if (!checked.ok) return fail({ errors: checked.errors })
-          if (action.type === 'record.create') await adapter.create(manifest, action.source, values, { rows: state.data[action.source] || [] })
-          else await adapter.update(manifest, action.source, action.id, values)
+          if (action.type === 'record.create') await adapter.create(manifest, action.source, values, { rows: state.data[action.source] || [], data: state.data })
+          else await adapter.update(manifest, action.source, action.id, values, { data: state.data })
           clear({ editing: null })
           await load()
         } else if (action.type === 'record.delete') {
@@ -305,7 +305,7 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
         } else if (action.type === 'form.submit') {
           const checked = checkRecord(manifest, action.source, values, { visitor: true, data: state.data })
           if (!checked.ok) return fail({ errors: checked.errors })
-          await adapter.submit(manifest, action.source, values)
+          await adapter.submit(manifest, action.source, values, { data: state.data })
           setUi((u) => {
             const next = { ...u, submitted: { ...u.submitted, [formId]: true }, values: { ...u.values }, errors: { ...u.errors } }
             delete next.values[formId]

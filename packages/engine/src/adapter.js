@@ -129,6 +129,24 @@ function rowFrom(body) {
 }
 
 /**
+ * Rows of every source the select fields being written draw their options
+ * from (optionsFrom), so a write is checked against the same rows the
+ * renderer showed. Rows already in hand (`given`) are used; the rest are read.
+ * A field left blank references nothing, so its source is not read.
+ */
+async function lookupData(source, values, given, read) {
+  const data = { ...(given || {}) }
+  const blank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '')
+  const needed = new Set(
+    (source.fields || [])
+      .filter((f) => f.optionsFrom && f.optionsFrom.source && !blank(values?.[f.key]))
+      .map((f) => f.optionsFrom.source),
+  )
+  await Promise.all([...needed].filter((k) => !Array.isArray(data[k])).map(async (k) => { data[k] = await read(k) }))
+  return data
+}
+
+/**
  * The owner-side adapter: an installed app, acting with its install token.
  *
  * @param {{ baseUrl: string, getToken: (o: { force: boolean }) => Promise<string>, fetch?: Function, routes?: object, timeoutMs?: number }} config
@@ -189,9 +207,9 @@ export function createGcrAdapter(config) {
       }
     },
 
-    async create(manifest, key, values, { rows } = {}) {
+    async create(manifest, key, values, { rows, data } = {}) {
       const source = sourceOf(manifest, key)
-      const checked = checkRecord(manifest, key, values)
+      const checked = checkRecord(manifest, key, values, { data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       const body = { ...checked.data }
       if (source.sortable && source.order && rows) {
@@ -200,9 +218,9 @@ export function createGcrAdapter(config) {
       return rowFrom(await request('POST', pathFor(source), { body }))
     },
 
-    async update(manifest, key, id, values) {
+    async update(manifest, key, id, values, { data } = {}) {
       const source = sourceOf(manifest, key)
-      const checked = checkRecord(manifest, key, values)
+      const checked = checkRecord(manifest, key, values, { data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       return rowFrom(await request('PATCH', pathFor(source, id), { body: checked.data }))
     },
@@ -253,20 +271,27 @@ export function createGcrAdapter(config) {
 export function createPublicAdapter(config) {
   const routes = { ...DEFAULT_ROUTES, ...(config.routes || {}) }
   const request = client({ timeoutMs: 15000, ...config, getToken: null })
-  return {
+  const pub = {
     routes,
     async load() {
       const body = await request('GET', fill(routes.publicApp, { installId: config.installId }))
       return { settings: body?.settings ?? {}, data: body?.data ?? {}, manifest: body?.manifest, errors: {} }
     },
-    async submit(manifest, key, values) {
+    async submit(manifest, key, values, { data } = {}) {
       const source = sourceOf(manifest, key)
       if (source.from !== 'app') throw new AdapterError('Visitors can only add to an app’s own tables.')
       const access = manifest?.data?.tables?.[source.table]?.public || 'none'
       if (!access.includes('append')) throw new AdapterError('This form is not open to visitors.')
-      const checked = checkRecord(manifest, key, values, { visitor: true })
+      // Option sources a visitor may see all come back from one public read.
+      let loaded = null
+      const read = async (k) => {
+        loaded = loaded || (await pub.load())
+        return Array.isArray(loaded.data?.[k]) ? loaded.data[k] : []
+      }
+      const checked = checkRecord(manifest, key, values, { visitor: true, data: await lookupData(source, values, data, read) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       return rowFrom(await request('POST', fill(routes.publicSubmit, { installId: config.installId, table: source.table }), { body: checked.data }))
     },
   }
+  return pub
 }

@@ -25,6 +25,8 @@ type Node = {
   last_seen_at: string | null
   revoked_at: string | null
 }
+// The box's reply is whatever its handler returns; read defensively below.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Answer = { status: string; response_status: number | null; response_body: any }
 type LogEntry = { asked: string; answer?: Answer; error?: string }
 

@@ -43,6 +43,8 @@ export default function VoiceInput({
       return
     }
 
+    // Speech support is only knowable in the browser, after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(true)
     const recognition = new Ctor()
     recognition.lang = navigator.language || 'en-US'

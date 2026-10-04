@@ -1,0 +1,118 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { createGcrAdapter, createPublicAdapter, AdapterError, DEFAULT_ROUTES, EXISTING_ROUTES } from '../src/index.js'
+import { sampleManifest, sampleData } from './fixtures.js'
+
+function fakeFetch(handler) {
+  const calls = []
+  const fn = async (url, init) => {
+    const call = { url, method: init.method, headers: init.headers, body: init.body ? JSON.parse(init.body) : undefined }
+    calls.push(call)
+    const { status = 200, body } = (await handler(call)) || {}
+    return new Response(body === undefined ? null : typeof body === 'string' ? body : JSON.stringify(body), { status })
+  }
+  fn.calls = calls
+  return fn
+}
+
+const token = async ({ force }) => (force ? 'fresh-token' : 'install-token')
+
+test('only the business section routes exist in gcr-api-clean today', () => {
+  assert.deepEqual([...EXISTING_ROUTES], ['businessSection', 'businessRow'])
+  assert.equal(DEFAULT_ROUTES.appTable, '/app-data/{table}')
+})
+
+test('load reads the install and every source a surface needs, with the install token', async () => {
+  const data = sampleData()
+  const fetch = fakeFetch(({ url }) => {
+    if (url.endsWith('/app-install')) return { body: { installId: 'i1', settings: { currency: 'EUR' }, granted: ['things:read'] } }
+    if (url.includes('/business/thing_groups')) return { body: { rows: data.groups } }
+    if (url.includes('/business/things')) return { body: { table: 'things', rows: data.things } }
+    if (url.includes('/app-data/notes')) return { body: { rows: data.notes } }
+    return { status: 404, body: '<html>' }
+  })
+  const adapter = createGcrAdapter({ baseUrl: 'https://gcr.example.test/api/', getToken: token, fetch })
+  const loaded = await adapter.load(sampleManifest(), 'owner')
+  assert.deepEqual(loaded.settings, { currency: 'EUR' })
+  assert.deepEqual(loaded.granted, ['things:read'])
+  assert.equal(loaded.data.things.length, 3)
+  assert.equal(loaded.data.notes.length, 3)
+  assert.ok(fetch.calls.every((c) => c.headers.Authorization === 'Bearer install-token'))
+  assert.ok(fetch.calls.every((c) => !/slug|entity/.test(c.url)), 'no business is ever named in a request')
+  assert.ok(fetch.calls.some((c) => c.url === 'https://gcr.example.test/api/business/things'))
+})
+
+test('a missing route is reported per source, not fatal', async () => {
+  const fetch = fakeFetch(({ url }) => (url.includes('/business/') ? { body: { rows: [] } } : { status: 404, body: '<html>not found</html>' }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const loaded = await adapter.load(sampleManifest(), 'owner')
+  assert.ok(loaded.installError instanceof AdapterError)
+  assert.equal(loaded.installError.notConnected, true)
+  assert.equal(loaded.errors.notes.notConnected, true)
+  assert.deepEqual(loaded.data.notes, [])
+})
+
+test('a 401 is retried once with a fresh token', async () => {
+  const fetch = fakeFetch(({ headers }) => (headers.Authorization === 'Bearer install-token' ? { status: 401, body: { error: 'expired' } } : { body: { rows: [] } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  assert.deepEqual(await adapter.list(sampleManifest(), 'things'), [])
+  assert.equal(fetch.calls.length, 2)
+})
+
+test('writes are checked before they are sent, and only declared fields go', async () => {
+  const fetch = fakeFetch(({ method, body }) => ({ status: method === 'POST' ? 201 : 200, body: { row: { id: 'new', ...body } } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  await assert.rejects(adapter.create(sampleManifest(), 'notes', { title: '' }), (err) => err.status === 422 && Boolean(err.errors.title))
+  assert.equal(fetch.calls.length, 0)
+  const row = await adapter.create(sampleManifest(), 'notes', { title: 'Hi', sneaky: 'x' }, { rows: sampleData().notes })
+  assert.equal(row.id, 'new')
+  const sent = fetch.calls[0]
+  assert.equal(sent.url, '/biz/app-data/notes')
+  assert.ok(!('sneaky' in sent.body))
+  assert.equal(sent.body.position, 4, 'new rows go to the end of a sortable source')
+  await adapter.update(sampleManifest(), 'things', 't1', { name: 'One!' })
+  assert.equal(fetch.calls[1].url, '/biz/business/things/t1')
+  assert.equal(fetch.calls[1].method, 'PATCH')
+  await adapter.remove(sampleManifest(), 'things', 't1')
+  assert.equal(fetch.calls[2].method, 'DELETE')
+})
+
+test('move swaps order values with the neighbour', async () => {
+  const fetch = fakeFetch(() => ({ body: { row: {} } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  await adapter.move(sampleManifest(), 'things', sampleData().things, 't1', 'up')
+  assert.deepEqual(fetch.calls.map((c) => [c.url, c.body]), [
+    ['/biz/business/things/t1', { sort_order: 1 }],
+    ['/biz/business/things/t2', { sort_order: 2 }],
+  ])
+  assert.equal(await adapter.move(sampleManifest(), 'things', sampleData().things, 't2', 'up'), false)
+})
+
+test('settings save only declared keys', async () => {
+  const fetch = fakeFetch(({ body }) => ({ body }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const saved = await adapter.saveSettings(sampleManifest(), { currency: 'EUR', injected: 'x' })
+  assert.deepEqual(saved, { currency: 'EUR' })
+  assert.equal(fetch.calls[0].method, 'PUT')
+})
+
+test('public adapter: no token, reads the install, appends only where allowed', async () => {
+  const fetch = fakeFetch(({ method, body }) => (method === 'GET' ? { body: { settings: { open: true }, data: { notes: [] } } } : { status: 201, body: { row: body } }))
+  const pub = createPublicAdapter({ baseUrl: '/api', installId: 'inst 1', fetch })
+  const loaded = await pub.load()
+  assert.deepEqual(loaded.settings, { open: true })
+  assert.equal(fetch.calls[0].url, '/api/public/apps/inst%201')
+  assert.equal(fetch.calls[0].headers.Authorization, undefined)
+  const row = await pub.submit(sampleManifest(), 'notes', { title: 'Hello', secret_flag: 'mine' })
+  assert.equal(row.secret_flag, 'new')
+  assert.equal(fetch.calls[1].url, '/api/public/apps/inst%201/notes')
+  await assert.rejects(pub.submit(sampleManifest(), 'things', { name: 'x' }), /app’s own tables/)
+  const closed = sampleManifest()
+  closed.data.tables.notes.public = 'read'
+  await assert.rejects(pub.submit(closed, 'notes', { title: 'x' }), /not open to visitors/)
+})
+
+test('network failure is an AdapterError with status 0', async () => {
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch: async () => { throw new Error('offline') } })
+  await assert.rejects(adapter.list(sampleManifest(), 'things'), (err) => err instanceof AdapterError && err.status === 0)
+})

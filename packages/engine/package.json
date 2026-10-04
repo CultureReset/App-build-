@@ -1,0 +1,26 @@
+{
+  "name": "@nextgent/app-engine",
+  "version": "1.0.0",
+  "description": "An app is a manifest drawn by one shared runtime: manifest validator, block renderers (data, React, HTML) and a gcr-api-clean data adapter. No dependencies.",
+  "type": "module",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+    "./react": { "types": "./src/react.d.ts", "default": "./src/react.js" },
+    "./html": { "types": "./src/index.d.ts", "default": "./src/html.js" },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": ["src", "README.md"],
+  "sideEffects": ["./src/styles.css"],
+  "scripts": {
+    "test": "node --test 'test/*.test.js'"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  }
+}

@@ -7,6 +7,7 @@ import { platformDefaultConfig } from '@/lib/ai/resolve-config'
 import { aiDraftToModuleDraft } from '@/lib/ai/map-draft'
 import { validateDraft } from '@/lib/modules/derive'
 import { draftContext } from '@/lib/engine/drafts'
+import { createHourlyLimiter, maxClientsFromEnv } from '@/lib/ai/builder-limit'
 import type { AiDraft } from '@/lib/ai/draft-schema'
 import type { ProposeState } from '@/app/dashboard/build/ai-actions'
 
@@ -19,8 +20,14 @@ import type { ProposeState } from '@/app/dashboard/build/ai-actions'
  * differs is who pays and who is limited, since there is no App-build- login
  * any more: only the deployment's own provider (platform env) is used, and
  * only when BUILDER_AI_HOURLY_LIMIT is a positive number, which caps calls
- * per client address per hour on this server instance. Deploy it where only
- * people who should build apps can reach it (e.g. behind Plat-admin).
+ * per client address per hour on this server instance, holding at most
+ * BUILDER_AI_MAX_CLIENTS addresses (lib/ai/builder-limit.ts). Deploy it where
+ * only people who should build apps can reach it (e.g. behind Plat-admin).
+ *
+ * The client address is the first x-forwarded-for entry, which is only as
+ * trustworthy as the proxy in front of this server: a Next server action has
+ * no view of the connection itself. Whether this builder should instead
+ * require a login is an owner decision, not made here.
  */
 
 function hourlyLimit(): number {
@@ -28,20 +35,7 @@ function hourlyLimit(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
 }
 
-const calls = new Map<string, number[]>()
-const HOUR_MS = 60 * 60 * 1000
-
-function allow(key: string): boolean {
-  const now = Date.now()
-  const recent = (calls.get(key) ?? []).filter((t) => now - t < HOUR_MS)
-  if (recent.length >= hourlyLimit()) {
-    calls.set(key, recent)
-    return false
-  }
-  recent.push(now)
-  calls.set(key, recent)
-  return true
-}
+const limiter = createHourlyLimiter({ limit: hourlyLimit, maxKeys: maxClientsFromEnv() })
 
 export async function storeAiAvailable(): Promise<boolean> {
   return hourlyLimit() > 0 && platformDefaultConfig() !== null
@@ -55,7 +49,7 @@ export async function proposeStoreApp(input: { prompt: string; previous?: AiDraf
 
   const list = await headers()
   const client = (list.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown'
-  if (!allow(client)) {
+  if (!limiter.allow(client)) {
     return { ok: false, error: 'You have generated a few apps already — try again in a little while.' }
   }
 

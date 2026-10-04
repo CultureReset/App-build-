@@ -3,6 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { listStoreModules } from '@/lib/modules/catalogue'
 import { BUILTIN_MODULES } from '@/lib/modules/builtins'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { legacyPlatformEnabled } from '@/lib/legacy'
 import type { ModuleManifest } from '@/lib/modules/spec'
 
 /** Rendered per request: the store is data, so this reflects what is live. */
@@ -30,18 +31,28 @@ async function catalogue(): Promise<ModuleManifest[]> {
 
 export default async function LandingPage() {
   const modules = await catalogue()
+  // With the retired platform off, the only door here is the app builder.
+  const legacy = legacyPlatformEnabled()
 
   return (
     <main className="min-h-screen bg-ink-950 text-white">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <span className="text-lg font-semibold tracking-tight">Modular</span>
         <nav className="flex items-center gap-2">
+          {legacy ? (
+          <>
           <Link href="/login" className="btn-ghost text-ink-300 hover:bg-white/10 hover:text-white">
             Log in
           </Link>
           <Link href="/signup" className="btn bg-white text-ink-900 hover:bg-ink-100">
             Get started
           </Link>
+          </>
+          ) : (
+            <Link href="/build" className="btn bg-white text-ink-900 hover:bg-ink-100">
+              Build an app
+            </Link>
+          )}
         </nav>
       </header>
 
@@ -60,15 +71,17 @@ export default async function LandingPage() {
           hosting and the security are never your problem.
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/signup" className="btn bg-brand-500 px-5 py-2.5 text-white hover:bg-brand-600">
+          <Link href={legacy ? '/signup' : '/build'} className="btn bg-brand-500 px-5 py-2.5 text-white hover:bg-brand-600">
             Start building
           </Link>
+          {legacy ? (
           <Link
             href="/preview"
             className="btn border border-white/15 px-5 py-2.5 text-white hover:bg-white/10"
           >
             See a live example
           </Link>
+          ) : null}
         </div>
       </section>
 

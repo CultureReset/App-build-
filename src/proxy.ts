@@ -1,12 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { legacyPlatformEnabled, retiredRedirect } from '@/lib/legacy'
 
 /**
  * Refreshes the auth session on every request and keeps the dashboard behind a
  * login. Public pages under /u/* are intentionally left open.
  */
 export async function proxy(request: NextRequest) {
+  // The retired login, dashboard, store and public pages are off unless the
+  // legacy switch is on (src/lib/legacy.ts).
+  if (!legacyPlatformEnabled()) {
+    const target = retiredRedirect(request.nextUrl.pathname)
+
+    if (target) {
+      const redirect = request.nextUrl.clone()
+      redirect.pathname = target
+      redirect.search = ''
+      return NextResponse.redirect(redirect)
+    }
+
+    return NextResponse.next()
+  }
+
   if (!isSupabaseConfigured()) {
     return NextResponse.next()
   }

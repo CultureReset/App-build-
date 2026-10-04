@@ -191,3 +191,11 @@ test('engine: a view set is public when any surface pointing at it is public', (
   m.surfaces.push({ id: 'owner-copy', kind: 'dashboard', path: '/public' })
   assert.ok(has(m, 'owner-only'))
 })
+
+test('v1: homepage is an http or https URI only', () => {
+  for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'ftp://files.example.test', 'not a url']) {
+    assert.ok(has(sampleManifest({ homepage: bad }), 'homepage must be an http or https URI'), bad)
+  }
+  assert.equal(validateManifest(sampleManifest({ homepage: 'https://app.example.test/about' })).ok, true)
+  assert.equal(validateManifest(sampleManifest({ homepage: 'http://app.example.test' })).ok, true)
+})

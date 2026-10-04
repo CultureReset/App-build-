@@ -88,6 +88,17 @@ function isUri(v) {
   }
 }
 
+/** An http(s) URI — the only kind a screen will link a visitor to. */
+function isHttpUri(v) {
+  if (!isStr(v)) return false
+  try {
+    const u = new URL(v)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 function collector() {
   const errors = []
   const add = (path, message) => errors.push({ path, message })
@@ -136,7 +147,7 @@ function checkV1(m, c) {
   str(m.description, 'description', { max: 4000 })
   str(m.version, 'version', { pattern: SEMVER })
   str(m.publisher, 'publisher', { max: 48, pattern: PUBLISHER })
-  if (m.homepage !== undefined && !isUri(m.homepage)) add('homepage', 'must be a URI.')
+  if (m.homepage !== undefined && !isHttpUri(m.homepage)) add('homepage', 'must be an http or https URI.')
   str(m.icon, 'icon', { max: 512 })
   if (arr(m.categories, 'categories', { max: 6 })) {
     m.categories.forEach((cat, i) => str(cat, `categories[${i}]`, { pattern: SLUG, required: true }))

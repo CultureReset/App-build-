@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "core-video",
+  "name": "Video",
+  "summary": "An intro clip, a walkthrough, a tour.",
+  "description": "Embed a video on your page. Only players the platform allows can be embedded, so the page stays fast and nothing else tracks your visitors.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "▶️",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Watch",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "video",
+    "tables": {
+      "videos": {
+        "public": "read",
+        "columns": {
+          "title": {
+            "type": "text",
+            "max_length": 120
+          },
+          "video_url": {
+            "type": "text",
+            "required": true
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "videos": {
+        "from": "app",
+        "table": "videos",
+        "label": "Videos",
+        "labelSingular": "Video",
+        "fields": [
+          {
+            "key": "title",
+            "label": "Title",
+            "type": "text",
+            "maxLength": 120
+          },
+          {
+            "key": "video_url",
+            "label": "Video link",
+            "type": "url",
+            "required": true
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "title",
+        "subtitle": "video_url",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "videos"
+        }
+      ],
+      "public": [
+        {
+          "type": "embed",
+          "source": "videos",
+          "style": "feature",
+          "fields": {
+            "link": "video_url",
+            "title": "title"
+          }
+        }
+      ]
+    }
+  }
+}

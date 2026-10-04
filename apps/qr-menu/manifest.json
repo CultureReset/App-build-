@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "id": "core-qr-menu",
+  "name": "QR Menu",
+  "summary": "A live menu customers scan at the table.",
+  "description": "Shows the menu the business already keeps — change a price once under Business and the QR menu, the public page and every other screen show it. Customers scan a code and read it on their phone.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "🍽️",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Menu",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "id": "menu:read",
+      "reason": "Shows your menu sections, items and prices on the QR page."
+    },
+    {
+      "id": "menu:write",
+      "reason": "Lets you edit menu items from inside this app.",
+      "optional": true
+    }
+  ],
+  "config": [
+    {
+      "key": "currency",
+      "label": "Currency",
+      "type": "text",
+      "help": "A currency code (USD, EUR) or the symbol to show before prices."
+    },
+    {
+      "key": "footer_note",
+      "label": "Footer note",
+      "type": "text",
+      "help": "Shown under the menu, e.g. an allergy notice."
+    }
+  ],
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "format": {
+      "currency": {
+        "setting": "currency"
+      }
+    },
+    "sources": {
+      "sections": {
+        "from": "business",
+        "section": "menu_sections",
+        "resource": "menu",
+        "label": "Menu sections",
+        "labelSingular": "Section",
+        "fields": [
+          {
+            "key": "section_name",
+            "label": "Section",
+            "type": "text",
+            "required": true,
+            "maxLength": 80
+          }
+        ],
+        "title": "section_name",
+        "order": "sort_order",
+        "sortable": true
+      },
+      "items": {
+        "from": "business",
+        "section": "menu_items",
+        "resource": "menu",
+        "label": "Menu items",
+        "labelSingular": "Menu item",
+        "fields": [
+          {
+            "key": "item_name",
+            "label": "Name",
+            "type": "text",
+            "required": true,
+            "maxLength": 120
+          },
+          {
+            "key": "description",
+            "label": "Description",
+            "type": "longtext",
+            "maxLength": 400
+          },
+          {
+            "key": "price",
+            "label": "Price",
+            "type": "money",
+            "min": 0
+          },
+          {
+            "key": "section_id",
+            "label": "Section",
+            "type": "select",
+            "optionsFrom": {
+              "source": "sections",
+              "label": "section_name"
+            }
+          },
+          {
+            "key": "is_available",
+            "label": "Available",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "item_name",
+        "subtitle": "price",
+        "group": "section_id",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "is_available"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "items"
+        },
+        {
+          "type": "collection",
+          "source": "sections"
+        },
+        {
+          "type": "settings"
+        }
+      ],
+      "public": [
+        {
+          "type": "list",
+          "source": "items",
+          "style": "list",
+          "fields": {
+            "title": "item_name",
+            "body": "description",
+            "value": "price"
+          }
+        },
+        {
+          "type": "text",
+          "text": {
+            "setting": "footer_note"
+          },
+          "heading": ""
+        }
+      ]
+    }
+  }
+}

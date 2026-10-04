@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "id": "core-listings",
+  "name": "Listings",
+  "summary": "Show what you have available, with a way to reach you on every one.",
+  "description": "Anything you list: each entry gets a photo, a price, a status badge and its own details. Visitors go from the thing they are interested in straight to the full details.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "🏷️",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Listings",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "listings",
+    "tables": {
+      "listings": {
+        "public": "read",
+        "columns": {
+          "title": {
+            "type": "text",
+            "required": true,
+            "max_length": 120
+          },
+          "location": {
+            "type": "text",
+            "max_length": 160
+          },
+          "price": {
+            "type": "money"
+          },
+          "status": {
+            "type": "text",
+            "required": true,
+            "default": "available"
+          },
+          "image_url": {
+            "type": "text"
+          },
+          "detail_one": {
+            "type": "text",
+            "max_length": 40
+          },
+          "detail_two": {
+            "type": "text",
+            "max_length": 40
+          },
+          "description": {
+            "type": "text",
+            "max_length": 800
+          },
+          "link_url": {
+            "type": "text"
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "config": [
+    {
+      "key": "currency",
+      "label": "Currency",
+      "type": "text",
+      "help": "A currency code (USD, EUR) or the symbol to show before prices."
+    }
+  ],
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "format": {
+      "currency": {
+        "setting": "currency"
+      }
+    },
+    "sources": {
+      "listings": {
+        "from": "app",
+        "table": "listings",
+        "label": "Listings",
+        "labelSingular": "Listing",
+        "fields": [
+          {
+            "key": "title",
+            "label": "Title",
+            "type": "text",
+            "required": true,
+            "maxLength": 120
+          },
+          {
+            "key": "location",
+            "label": "Location",
+            "type": "text",
+            "maxLength": 160
+          },
+          {
+            "key": "price",
+            "label": "Price",
+            "type": "money",
+            "min": 0
+          },
+          {
+            "key": "status",
+            "label": "Status",
+            "type": "select",
+            "required": true,
+            "default": "available",
+            "options": [
+              {
+                "value": "available",
+                "label": "Available"
+              },
+              {
+                "value": "pending",
+                "label": "Pending"
+              },
+              {
+                "value": "gone",
+                "label": "No longer available"
+              }
+            ]
+          },
+          {
+            "key": "image_url",
+            "label": "Photo URL",
+            "type": "image",
+            "help": "A link to a hosted photo."
+          },
+          {
+            "key": "detail_one",
+            "label": "Detail",
+            "type": "text",
+            "maxLength": 40
+          },
+          {
+            "key": "detail_two",
+            "label": "Second detail",
+            "type": "text",
+            "maxLength": 40
+          },
+          {
+            "key": "description",
+            "label": "Description",
+            "type": "longtext",
+            "maxLength": 800
+          },
+          {
+            "key": "link_url",
+            "label": "Full details link",
+            "type": "url"
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "title",
+        "subtitle": "price",
+        "group": "status",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "listings"
+        },
+        {
+          "type": "settings"
+        }
+      ],
+      "public": [
+        {
+          "type": "list",
+          "source": "listings",
+          "style": "grid",
+          "fields": {
+            "title": "title",
+            "subtitle": "location",
+            "image": "image_url",
+            "value": "price",
+            "badge": "status",
+            "link": "link_url",
+            "body": "description",
+            "meta": [
+              "detail_one",
+              "detail_two"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

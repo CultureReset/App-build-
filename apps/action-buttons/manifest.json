@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "id": "core-action-buttons",
+  "name": "Action Buttons",
+  "summary": "Call, message, book — one tap each.",
+  "description": "The row of buttons that turns a visitor into a conversation. Point them at a phone number, an email, a booking link or anything else you use.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "⚡",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Get in touch",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "action_buttons",
+    "tables": {
+      "shortcuts": {
+        "public": "read",
+        "columns": {
+          "label": {
+            "type": "text",
+            "required": true,
+            "max_length": 40
+          },
+          "icon": {
+            "type": "text",
+            "default": "arrow"
+          },
+          "url": {
+            "type": "text",
+            "required": true
+          },
+          "style": {
+            "type": "text",
+            "default": "primary"
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "shortcuts": {
+        "from": "app",
+        "table": "shortcuts",
+        "label": "Buttons",
+        "labelSingular": "Button",
+        "fields": [
+          {
+            "key": "label",
+            "label": "Button text",
+            "type": "text",
+            "required": true,
+            "maxLength": 40
+          },
+          {
+            "key": "icon",
+            "label": "Icon",
+            "type": "select",
+            "default": "arrow",
+            "options": [
+              {
+                "value": "arrow",
+                "label": "Arrow",
+                "icon": "→"
+              },
+              {
+                "value": "phone",
+                "label": "Phone",
+                "icon": "📞"
+              },
+              {
+                "value": "message",
+                "label": "Message",
+                "icon": "💬"
+              },
+              {
+                "value": "mail",
+                "label": "Email",
+                "icon": "✉️"
+              },
+              {
+                "value": "calendar",
+                "label": "Calendar",
+                "icon": "📅"
+              },
+              {
+                "value": "map",
+                "label": "Location",
+                "icon": "📍"
+              },
+              {
+                "value": "card",
+                "label": "Payment",
+                "icon": "💳"
+              },
+              {
+                "value": "download",
+                "label": "Download",
+                "icon": "⬇️"
+              },
+              {
+                "value": "star",
+                "label": "Review",
+                "icon": "⭐"
+              }
+            ]
+          },
+          {
+            "key": "url",
+            "label": "Link",
+            "type": "text",
+            "required": true,
+            "maxLength": 500,
+            "help": "A web link, or a tel:, mailto: or sms: link written out in full."
+          },
+          {
+            "key": "style",
+            "label": "Emphasis",
+            "type": "select",
+            "default": "primary",
+            "options": [
+              {
+                "value": "primary",
+                "label": "Primary"
+              },
+              {
+                "value": "secondary",
+                "label": "Secondary"
+              }
+            ]
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "label",
+        "subtitle": "url",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "shortcuts"
+        }
+      ],
+      "public": [
+        {
+          "type": "links",
+          "source": "shortcuts",
+          "style": "stack",
+          "fields": {
+            "label": "label",
+            "link": "url",
+            "icon": "icon",
+            "emphasis": "style"
+          }
+        }
+      ]
+    }
+  }
+}

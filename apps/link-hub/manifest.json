@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "id": "core-link-hub",
+  "name": "Link Hub",
+  "summary": "Every link you hand out, in one block on your page.",
+  "description": "A tidy stack of links — booking, socials, your menu, whatever you point people at. Reorder them any time and the public page follows.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "🔗",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Links",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "link_hub",
+    "tables": {
+      "links": {
+        "public": "read",
+        "columns": {
+          "label": {
+            "type": "text",
+            "required": true,
+            "max_length": 80
+          },
+          "url": {
+            "type": "text",
+            "required": true
+          },
+          "description": {
+            "type": "text",
+            "max_length": 120
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "links": {
+        "from": "app",
+        "table": "links",
+        "label": "Links",
+        "labelSingular": "Link",
+        "fields": [
+          {
+            "key": "label",
+            "label": "Label",
+            "type": "text",
+            "required": true,
+            "maxLength": 80
+          },
+          {
+            "key": "url",
+            "label": "URL",
+            "type": "url",
+            "required": true
+          },
+          {
+            "key": "description",
+            "label": "Short description",
+            "type": "text",
+            "maxLength": 120
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "label",
+        "subtitle": "url",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "links"
+        }
+      ],
+      "public": [
+        {
+          "type": "links",
+          "source": "links",
+          "style": "stack",
+          "fields": {
+            "label": "label",
+            "link": "url",
+            "note": "description"
+          }
+        }
+      ]
+    }
+  }
+}

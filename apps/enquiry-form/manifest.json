@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "id": "core-enquiry-form",
+  "name": "Enquiry Form",
+  "summary": "Catch the people who are ready to talk.",
+  "description": "A short form on your page. Every enquiry lands in your app with a status you can work through, so nothing gets lost in a chat thread.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "📥",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Get in touch",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "enquiries",
+    "tables": {
+      "enquiries": {
+        "public": "append",
+        "columns": {
+          "name": {
+            "type": "text",
+            "required": true,
+            "max_length": 80
+          },
+          "email": {
+            "type": "text",
+            "required": true
+          },
+          "phone": {
+            "type": "text"
+          },
+          "message": {
+            "type": "text",
+            "max_length": 800
+          },
+          "status": {
+            "type": "text",
+            "default": "new"
+          }
+        }
+      }
+    }
+  },
+  "config": [
+    {
+      "key": "accepting",
+      "label": "Accepting enquiries",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "key": "intro",
+      "label": "Message above the form",
+      "type": "text"
+    }
+  ],
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "enquiries": {
+        "from": "app",
+        "table": "enquiries",
+        "label": "Enquiries",
+        "labelSingular": "Enquiry",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Your name",
+            "type": "text",
+            "required": true,
+            "maxLength": 80
+          },
+          {
+            "key": "email",
+            "label": "Email",
+            "type": "email",
+            "required": true
+          },
+          {
+            "key": "phone",
+            "label": "Phone",
+            "type": "phone"
+          },
+          {
+            "key": "message",
+            "label": "Message",
+            "type": "longtext",
+            "maxLength": 800
+          },
+          {
+            "key": "status",
+            "label": "Status",
+            "type": "select",
+            "default": "new",
+            "ownerOnly": true,
+            "options": [
+              {
+                "value": "new",
+                "label": "New"
+              },
+              {
+                "value": "contacted",
+                "label": "Contacted"
+              },
+              {
+                "value": "won",
+                "label": "Won"
+              },
+              {
+                "value": "closed",
+                "label": "Closed"
+              }
+            ]
+          }
+        ],
+        "title": "name",
+        "subtitle": "email",
+        "group": "status"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "enquiries"
+        },
+        {
+          "type": "settings"
+        }
+      ],
+      "public": [
+        {
+          "type": "form",
+          "source": "enquiries",
+          "style": "feature",
+          "submitLabel": "Send enquiry",
+          "intro": {
+            "setting": "intro"
+          },
+          "openWhen": {
+            "setting": "accepting"
+          }
+        }
+      ]
+    }
+  }
+}

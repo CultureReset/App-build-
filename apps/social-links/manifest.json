@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "id": "core-social-links",
+  "name": "Social Links",
+  "summary": "Every profile you keep, in one compact row.",
+  "description": "All the places people can follow you, in a row that sits under your name rather than eating a whole section.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "🌐",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Elsewhere",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "social_links",
+    "tables": {
+      "profiles": {
+        "public": "read",
+        "columns": {
+          "network": {
+            "type": "text",
+            "required": true
+          },
+          "url": {
+            "type": "text",
+            "required": true
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "profiles": {
+        "from": "app",
+        "table": "profiles",
+        "label": "Profiles",
+        "labelSingular": "Profile",
+        "fields": [
+          {
+            "key": "network",
+            "label": "Network",
+            "type": "select",
+            "required": true,
+            "options": [
+              {
+                "value": "instagram",
+                "label": "Instagram",
+                "icon": "IG"
+              },
+              {
+                "value": "facebook",
+                "label": "Facebook",
+                "icon": "f"
+              },
+              {
+                "value": "linkedin",
+                "label": "LinkedIn",
+                "icon": "in"
+              },
+              {
+                "value": "youtube",
+                "label": "YouTube",
+                "icon": "▶"
+              },
+              {
+                "value": "tiktok",
+                "label": "TikTok",
+                "icon": "♪"
+              },
+              {
+                "value": "x",
+                "label": "X",
+                "icon": "𝕏"
+              },
+              {
+                "value": "whatsapp",
+                "label": "WhatsApp",
+                "icon": "✆"
+              },
+              {
+                "value": "threads",
+                "label": "Threads",
+                "icon": "@"
+              },
+              {
+                "value": "pinterest",
+                "label": "Pinterest",
+                "icon": "P"
+              },
+              {
+                "value": "spotify",
+                "label": "Spotify",
+                "icon": "♫"
+              },
+              {
+                "value": "website",
+                "label": "Website",
+                "icon": "⌘"
+              }
+            ]
+          },
+          {
+            "key": "url",
+            "label": "Link",
+            "type": "url",
+            "required": true
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "network",
+        "subtitle": "url",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "profiles"
+        }
+      ],
+      "public": [
+        {
+          "type": "links",
+          "source": "profiles",
+          "style": "icons",
+          "fields": {
+            "label": "network",
+            "icon": "network",
+            "link": "url"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "id": "core-faq",
+  "name": "FAQ",
+  "summary": "Answer the questions before they are asked.",
+  "description": "A list of questions and answers that expand when tapped. Cuts down the same messages you answer every week.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "❓",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Manage",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Questions",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [],
+  "data": {
+    "namespace": "faq",
+    "tables": {
+      "entries": {
+        "public": "read",
+        "columns": {
+          "question": {
+            "type": "text",
+            "required": true,
+            "max_length": 160
+          },
+          "answer": {
+            "type": "text",
+            "required": true,
+            "max_length": 1200
+          },
+          "visible": {
+            "type": "boolean",
+            "default": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "entries": {
+        "from": "app",
+        "table": "entries",
+        "label": "Questions",
+        "labelSingular": "Question",
+        "fields": [
+          {
+            "key": "question",
+            "label": "Question",
+            "type": "text",
+            "required": true,
+            "maxLength": 160
+          },
+          {
+            "key": "answer",
+            "label": "Answer",
+            "type": "longtext",
+            "required": true,
+            "maxLength": 1200
+          },
+          {
+            "key": "visible",
+            "label": "Visible",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "title": "question",
+        "order": "sort_order",
+        "sortable": true,
+        "visibleWhen": "visible"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "collection",
+          "source": "entries"
+        }
+      ],
+      "public": [
+        {
+          "type": "details",
+          "source": "entries",
+          "style": "accordion",
+          "fields": {
+            "summary": "question",
+            "body": "answer"
+          }
+        }
+      ]
+    }
+  }
+}

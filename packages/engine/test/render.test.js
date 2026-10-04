@@ -169,3 +169,19 @@ test('checkRecord: same rules for owners and visitors, visitors lose owner-only 
   assert.equal(ref.ok, false)
   assert.equal(checkRecord(m, 'things', { name: 'X', group_id: 2 }, { data: sampleData() }).ok, true)
 })
+
+test('an owner-only field never reaches a visitor through a default slot (source title)', () => {
+  const m = sampleManifest()
+  m.ui.sources.notes.title = 'secret_flag'
+  // No explicit title binding: list, details, feed and links fall back to the source title.
+  m.ui.views.public = [
+    { type: 'list', source: 'notes' },
+    { type: 'details', source: 'notes', fields: { body: 'body' } },
+    { type: 'feed', source: 'notes' },
+    { type: 'links', source: 'notes', fields: { link: 'link' } },
+  ]
+  const pub = json(renderPublic(m, {}, sampleData()))
+  assert.ok(!pub.includes('private-value'), pub)
+  // The owner still sees it.
+  assert.ok(json(renderOwner(m, {}, sampleData())).includes('private-value'))
+})

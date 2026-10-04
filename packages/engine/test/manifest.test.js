@@ -170,3 +170,24 @@ test('parseManifest throws with the first problems; helpers read permissions', (
   assert.deepEqual(permissionsOf(m).optional.map((p) => p.id), ['things:write'])
   assert.deepEqual(resourcesOf(m), ['things'])
 })
+
+test('engine: a public view cannot fall back to an owner-only source title', () => {
+  for (const view of [{ type: 'list', source: 'notes' }, { type: 'details', source: 'notes', fields: { body: 'body' } }, { type: 'feed', source: 'notes' }, { type: 'links', source: 'notes', fields: { link: 'link' } }]) {
+    const m = sampleManifest()
+    m.ui.sources.notes.title = 'secret_flag'
+    m.ui.views.public = [view]
+    assert.ok(has(m, 'owner-only'), view.type)
+    // Bound to another field, the same view is fine.
+    const slot = { list: 'title', details: 'summary', feed: 'title', links: 'label' }[view.type]
+    m.ui.views.public = [{ ...view, fields: { ...(view.fields || {}), [slot]: 'title' } }]
+    assert.ok(!has(m, 'owner-only'), `${view.type} bound`)
+  }
+})
+
+test('engine: a view set is public when any surface pointing at it is public', () => {
+  const m = sampleManifest()
+  m.ui.views.public.push({ type: 'list', source: 'notes', fields: { title: 'secret_flag' } })
+  // A second, owner surface on the same view set must not launder it.
+  m.surfaces.push({ id: 'owner-copy', kind: 'dashboard', path: '/public' })
+  assert.ok(has(m, 'owner-only'))
+})

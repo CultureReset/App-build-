@@ -63,7 +63,9 @@ function fieldOf(source, key) {
 }
 
 function display(ctx, sourceKey, field, row) {
-  if (!field) return ''
+  // Owner-only fields are never drawn for a visitor, whichever slot (bound or
+  // defaulted from the source's title) led here.
+  if (!field || (ctx.visitor && field.ownerOnly)) return ''
   return formatValue(field, row[field.key], { ...ctx.format, copy: ctx.copy, lookups: ctx.lookupsBySource[sourceKey] })
 }
 
@@ -420,12 +422,13 @@ function renderViews(ctx, surface) {
   const name = String(surface.path || '').slice(1)
   const views = ctx.manifest.ui?.views?.[name] || []
   const isPublic = PUBLIC_KINDS.includes(surface.kind)
+  const vctx = isPublic ? { ...ctx, visitor: true } : ctx
   const out = []
   for (const view of views) {
     let block = null
     if (view.type === 'collection' && !isPublic) block = collectionView(ctx, view)
     else if (view.type === 'settings' && !isPublic) block = settingsView(ctx, view)
-    else if (view.type !== 'collection' && view.type !== 'settings') block = publicView(ctx, view, surface)
+    else if (view.type !== 'collection' && view.type !== 'settings') block = publicView(vctx, view, surface)
     if (block) out.push(block)
   }
   return out

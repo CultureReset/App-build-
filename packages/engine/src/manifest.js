@@ -503,7 +503,7 @@ function checkEngine(m, c) {
   surfaces.forEach((s, i) => {
     const name = isStr(s.path) ? s.path.slice(1) : ''
     if (!views[name]) add(`surfaces[${i}].path`, `must be "/<view set>"; ui.views has no "${name}".`)
-    else surfaceFor[name] = s
+    else (surfaceFor[name] = surfaceFor[name] || []).push(s)
   })
   for (const [name, list] of Object.entries(views)) {
     const vp = `ui.views.${name}`
@@ -512,7 +512,8 @@ function checkEngine(m, c) {
       add(vp, 'must list at least one view.')
       continue
     }
-    const isPublic = surfaceFor[name] && surfaceFor[name].kind === 'public'
+    // One public surface on a view set makes it public, whatever else points at it.
+    const isPublic = Boolean(surfaceFor[name] && surfaceFor[name].some((s) => s.kind === 'public'))
     list.forEach((v, i) => checkView(v, `${vp}[${i}]`, { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys }))
   }
 }
@@ -571,6 +572,12 @@ function checkView(v, p, ctx) {
         }
       }
     }
+  }
+  // Slots that fall back to the source's title when unbound (render.js).
+  const defaultSlot = { list: 'title', feed: 'title', links: 'label', details: 'summary' }[v.type]
+  if (isPublic && defaultSlot && !(isObj(v.fields) && v.fields[defaultSlot] !== undefined)) {
+    const titleField = fields.find((x) => x.key === source.title)
+    if (titleField && titleField.ownerOnly) add(`${p}.fields.${defaultSlot}`, `defaults to the source title "${source.title}", which is owner-only and cannot be shown publicly.`)
   }
   for (const required of { links: ['link'], images: ['image'], details: ['body'], embed: ['link'] }[v.type] || []) {
     if (!isObj(v.fields) || !v.fields[required]) add(`${p}.fields.${required}`, `a ${v.type} view needs its ${required} field.`)

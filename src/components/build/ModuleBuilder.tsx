@@ -36,6 +36,7 @@ export default function ModuleBuilder({
   installCount = 0,
   published = false,
   storeMode = false,
+  reservedPublishers = [],
 }: {
   /** The module_listings row being edited (retired platform). Absent in store mode. */
   listingId?: string
@@ -49,6 +50,8 @@ export default function ModuleBuilder({
    * into the Paperclip store (ManifestPanel).
    */
   storeMode?: boolean
+  /** The shipped apps' publishers (from apps/), which a builder app may not use (DECISIONS #43). */
+  reservedPublishers?: string[]
 }) {
   const router = useRouter()
   const [draft, setDraft] = useState<ModuleDraft>(initial)
@@ -701,7 +704,7 @@ export default function ModuleBuilder({
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         ) : null}
 
-        {storeMode ? <ManifestPanel draft={draft} ready={validation.success} /> : null}
+        {storeMode ? <ManifestPanel draft={draft} ready={validation.success} reservedPublishers={reservedPublishers} /> : null}
 
         {storeMode || !listingId ? null : (
         <>

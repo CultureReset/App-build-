@@ -14,7 +14,7 @@ export type Starter = { id: string; name: string; draft: ModuleDraft }
  * server by lib/engine/starters.ts and passed in), edit it in the same
  * ModuleBuilder, and take the engine manifest to the Paperclip store.
  */
-export default function StoreBuilder({ initial, describeAvailable, starters = [] }: { initial?: ModuleDraft; describeAvailable: boolean; starters?: Starter[] }) {
+export default function StoreBuilder({ initial, describeAvailable, starters = [], reservedPublishers = [] }: { initial?: ModuleDraft; describeAvailable: boolean; starters?: Starter[]; reservedPublishers?: string[] }) {
   const [draft, setDraft] = useState<ModuleDraft | null>(initial ?? null)
   const [name, setName] = useState('')
 
@@ -24,7 +24,7 @@ export default function StoreBuilder({ initial, describeAvailable, starters = []
         <button type="button" className="text-sm text-ink-500 hover:text-ink-900" onClick={() => setDraft(null)}>
           ← Start over
         </button>
-        <ModuleBuilder key={draft.name + draft.version} initial={draft} storeMode />
+        <ModuleBuilder key={draft.name + draft.version} initial={draft} storeMode reservedPublishers={reservedPublishers} />
       </div>
     )
   }

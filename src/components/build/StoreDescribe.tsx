@@ -7,8 +7,8 @@ import { proposeStoreApp } from '@/app/build/ai-actions'
 import type { ModuleDraft } from '@/lib/modules/derive'
 
 /** Describe-it / speak-it, then the same builder, then the store manifest. */
-export default function StoreDescribe({ configured, starters }: { configured: boolean; starters?: Starter[] }) {
+export default function StoreDescribe({ configured, starters, reservedPublishers }: { configured: boolean; starters?: Starter[]; reservedPublishers?: string[] }) {
   const [draft, setDraft] = useState<ModuleDraft | null>(null)
-  if (draft) return <StoreBuilder initial={draft} describeAvailable={configured} starters={starters} />
+  if (draft) return <StoreBuilder initial={draft} describeAvailable={configured} starters={starters} reservedPublishers={reservedPublishers} />
   return <DescribeBuilder configured={configured} propose={proposeStoreApp} onAccept={setDraft} backHref="/build" />
 }

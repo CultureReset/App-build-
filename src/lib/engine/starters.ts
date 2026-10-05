@@ -33,6 +33,11 @@ export function shippedManifests(dir = appsDir()): ShippedApp[] {
     .map((name) => ({ dir: name, manifest: JSON.parse(readFileSync(path.join(dir, name, 'manifest.json'), 'utf8')) as Manifest }))
 }
 
+/** The publishers of the shipped apps: reserved, a builder app never takes their keys (DECISIONS #43). */
+export function shippedPublishers(dir = appsDir()): string[] {
+  return [...new Set(shippedManifests(dir).map((s) => s.manifest.publisher))].sort()
+}
+
 /** Every shipped app, as a draft to start from. */
 export function starterDrafts(dir = appsDir()): { id: string; name: string; draft: ModuleDraft }[] {
   return shippedManifests(dir).map(({ dir: id, manifest }) => ({ id, name: manifest.name, draft: draftFromEngineManifest(manifest) }))

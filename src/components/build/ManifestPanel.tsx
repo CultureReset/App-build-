@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { publishToStore, toStorePublication, validateManifest, type Manifest } from '@nextgent/app-engine'
 import { engineManifestFromModule } from '@/lib/engine/from-module'
+import { checkPublishTarget, publisherFromSession, publisherKey, type SessionLike, type StoreListingItem } from '@/lib/engine/publisher'
 import { deriveManifest, type ModuleDraft } from '@/lib/modules/derive'
 import type { ModuleManifest } from '@/lib/modules/spec'
 
@@ -12,21 +13,55 @@ import type { ModuleManifest } from '@/lib/modules/spec'
  * the store by an instance admin whose Paperclip session this browser holds
  * (Paperclip must list this site in PAPERCLIP_APP_ORIGINS). Nothing is saved
  * in App-build- and no credential is kept here.
+ *
+ * The publisher prefix is the operator's (DECISIONS #43): the configured key,
+ * else one from the Paperclip session; never a shipped app's. Before a
+ * version is added to an item already in the store, the stored manifest's
+ * data model (tables, bindings) must match, or the publish is refused.
  */
 const STORE_URL = process.env.NEXT_PUBLIC_PAPERCLIP_URL ?? ''
 const STORE_KIND = process.env.NEXT_PUBLIC_STORE_APP_KIND || undefined
+const SESSION_PATH = '/api/auth/get-session'
+const LISTING_PATH = '/api/store/admin/items'
 
-export default function ManifestPanel({ draft, ready }: { draft: ModuleDraft; ready: boolean }) {
+async function readJson<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${STORE_URL}${path}`, { credentials: 'include', headers: { Accept: 'application/json' } })
+    if (!res.ok) return null
+    return (await res.json()) as T
+  } catch {
+    return null
+  }
+}
+
+export default function ManifestPanel({ draft, ready, reservedPublishers = [] }: { draft: ModuleDraft; ready: boolean; reservedPublishers?: string[] }) {
   const [publisher, setPublisher] = useState(process.env.NEXT_PUBLIC_STORE_PUBLISHER ?? '')
+  const [session, setSession] = useState<SessionLike | null>(null)
   const [changelog, setChangelog] = useState('')
   const [show, setShow] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // The operator's session names the publisher when the deployment does not.
+  useEffect(() => {
+    if (!STORE_URL) return
+    let live = true
+    readJson<SessionLike>(SESSION_PATH).then((s) => {
+      if (!live || !s) return
+      setSession(s)
+      setPublisher((current) => current.trim() || publisherFromSession(s) || current)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const key = useMemo(() => publisherKey({ configured: publisher, session, reserved: reservedPublishers }), [publisher, session, reservedPublishers])
+
   const manifest = useMemo<Manifest | null>(() => {
-    if (!ready || !publisher.trim()) return null
-    return engineManifestFromModule(deriveManifest(draft) as ModuleManifest, { publisher })
-  }, [draft, ready, publisher])
+    if (!ready || !key.ok) return null
+    return engineManifestFromModule(deriveManifest(draft) as ModuleManifest, { publisher: key.publisher })
+  }, [draft, ready, key])
 
   const checked = useMemo(() => (manifest ? validateManifest(manifest) : null), [manifest])
   const json = manifest ? JSON.stringify(manifest, null, 2) : ''
@@ -51,6 +86,12 @@ export default function ManifestPanel({ draft, ready }: { draft: ModuleDraft; re
     setBusy(true)
     setStatus(null)
     try {
+      // An existing item takes a new version only when its data model is unchanged.
+      const target = checkPublishTarget(await readJson<StoreListingItem[]>(LISTING_PATH), manifest)
+      if (!target.ok) {
+        setStatus({ ok: false, text: target.error })
+        return
+      }
       await publishToStore(publication, { baseUrl: STORE_URL, credentials: 'include' })
       setStatus({ ok: true, text: `Published ${manifest.id} ${manifest.version} to the store.` })
     } catch (err) {
@@ -85,6 +126,7 @@ export default function ManifestPanel({ draft, ready }: { draft: ModuleDraft; re
       </div>
 
       {manifest ? <p className="font-mono text-xs text-ink-500">{manifest.id} · {manifest.version}</p> : null}
+      {!key.ok && publisher.trim() ? <p className="text-xs text-amber-800">{key.error}</p> : null}
 
       {checked && !checked.ok ? (
         <ul className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3">

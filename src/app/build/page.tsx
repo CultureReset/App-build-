@@ -1,6 +1,6 @@
 import StoreBuilder from '@/components/build/StoreBuilder'
 import { storeAiAvailable } from '@/app/build/ai-actions'
-import { starterDrafts } from '@/lib/engine/starters'
+import { shippedPublishers, starterDrafts } from '@/lib/engine/starters'
 
 export const metadata = { title: 'Build an app' }
 export const dynamic = 'force-dynamic'
@@ -19,7 +19,7 @@ export default async function BuildPage() {
         An app is a definition, not code. Build it here, then publish it to the store; it is drawn by
         the same engine on the business app, the public page and the TV.
       </p>
-      <StoreBuilder describeAvailable={describeAvailable} starters={starterDrafts()} />
+      <StoreBuilder describeAvailable={describeAvailable} starters={starterDrafts()} reservedPublishers={shippedPublishers()} />
     </main>
   )
 }

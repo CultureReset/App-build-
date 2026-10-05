@@ -76,19 +76,10 @@
             "label": "Link",
             "type": "url",
             "required": true
-          },
-          {
-            "key": "visible",
-            "label": "Visible",
-            "type": "boolean",
-            "default": true
           }
         ],
         "title": "network",
-        "subtitle": "url",
-        "order": "sort_order",
-        "sortable": true,
-        "visibleWhen": "visible"
+        "subtitle": "url"
       }
     },
     "views": {

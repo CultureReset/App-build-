@@ -145,8 +145,6 @@
         "title": "item_name",
         "subtitle": "price",
         "group": "section_id",
-        "order": "sort_order",
-        "sortable": true,
         "visibleWhen": "is_available"
       }
     },

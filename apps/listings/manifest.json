@@ -49,7 +49,12 @@
   "bindings": {
     "listings": {
       "contract": "listings.items",
-      "access": "read-write"
+      "access": "read-write",
+      "fieldMap": {
+        "title": "name",
+        "price": "price_from",
+        "visible": "active"
+      }
     },
     "currency": {
       "contract": "business.currency",
@@ -80,66 +85,37 @@
             "maxLength": 120
           },
           {
-            "key": "location",
-            "label": "Location",
+            "key": "kind",
+            "label": "Kind",
             "type": "text",
-            "maxLength": 160
+            "required": true,
+            "maxLength": 40,
+            "help": "What sort of listing this is: room, service, product… Visitors can filter by it."
+          },
+          {
+            "key": "unit",
+            "label": "Unit",
+            "type": "text",
+            "maxLength": 40,
+            "help": "What the price is for: per night, per hour, each."
           },
           {
             "key": "price",
-            "label": "Price",
+            "label": "Price from",
             "type": "money",
             "min": 0
           },
           {
-            "key": "status",
-            "label": "Status",
-            "type": "select",
-            "required": true,
-            "default": "available",
-            "options": [
-              {
-                "value": "available",
-                "label": "Available"
-              },
-              {
-                "value": "pending",
-                "label": "Pending"
-              },
-              {
-                "value": "gone",
-                "label": "No longer available"
-              }
-            ]
-          },
-          {
-            "key": "image_url",
-            "label": "Photo URL",
-            "type": "image",
-            "help": "A link to a hosted photo."
-          },
-          {
-            "key": "detail_one",
-            "label": "Detail",
-            "type": "text",
-            "maxLength": 40
-          },
-          {
-            "key": "detail_two",
-            "label": "Second detail",
-            "type": "text",
-            "maxLength": 40
+            "key": "capacity",
+            "label": "Capacity",
+            "type": "number",
+            "min": 0
           },
           {
             "key": "description",
             "label": "Description",
             "type": "longtext",
             "maxLength": 800
-          },
-          {
-            "key": "link_url",
-            "label": "Full details link",
-            "type": "url"
           },
           {
             "key": "visible",
@@ -150,7 +126,6 @@
         ],
         "title": "title",
         "subtitle": "price",
-        "group": "status",
         "order": "sort_order",
         "sortable": true,
         "visibleWhen": "visible"
@@ -170,15 +145,12 @@
           "style": "grid",
           "fields": {
             "title": "title",
-            "subtitle": "location",
-            "image": "image_url",
+            "subtitle": "unit",
             "value": "price",
-            "badge": "status",
-            "link": "link_url",
+            "badge": "kind",
             "body": "description",
             "meta": [
-              "detail_one",
-              "detail_two"
+              "capacity"
             ]
           }
         }

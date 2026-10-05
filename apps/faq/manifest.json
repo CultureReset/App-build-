@@ -76,18 +76,11 @@
             "type": "longtext",
             "required": true,
             "maxLength": 1200
-          },
-          {
-            "key": "visible",
-            "label": "Visible",
-            "type": "boolean",
-            "default": true
           }
         ],
         "title": "question",
         "order": "sort_order",
-        "sortable": true,
-        "visibleWhen": "visible"
+        "sortable": true
       }
     },
     "views": {

@@ -1,3 +1,8 @@
+// retired: definitions live in apps/*/manifest.json
+// Frozen: the builder, the home page and the tests start from apps/ through
+// src/lib/engine/starters.ts (DECISIONS #42). Only the retired platform
+// (APP_BUILD_LEGACY_PLATFORM=on) still reads this: catalogue.ts, demo/page.ts,
+// scripts/generate-module-seed.ts.
 import { parseManifest, type ModuleManifest } from '@/lib/modules/spec'
 import qrMenu from '@/modules/qr-menu/manifest'
 import songRequest from '@/modules/song-request/manifest'

@@ -1,5 +1,5 @@
-import type { Field, Manifest, View } from '@nextgent/app-engine'
-import type { ModuleField, ModuleManifest, PublicSurface } from '@/lib/modules/spec'
+import { resourceForContract, type Field, type Manifest, type View } from '@nextgent/app-engine'
+import type { ModuleBinding, ModuleField, ModuleManifest, PublicSurface } from '@/lib/modules/spec'
 
 /**
  * App-build-'s module manifest (src/lib/modules/spec.ts, what the builder and
@@ -12,6 +12,12 @@ import type { ModuleField, ModuleManifest, PublicSurface } from '@/lib/modules/s
  * `footer_note` / `intro` / `accepting` settings feed the catalog and form
  * blocks (Catalog.tsx, FormBlock.tsx). Prices are not carried: the store sets
  * them (PUT /api/store/admin/items/:id/price).
+ *
+ * A collection with a `binding` is business data (DECISIONS #45): it becomes a
+ * `from: "business"` source resolved through the manifest's `bindings`, has no
+ * table of its own, and the permissions its contract implies are derived here
+ * — `<resource>:read`, plus `<resource>:write` for read-write — with the
+ * binding's reasons. An author never types a permission.
  */
 
 const ORDER_COLUMN = 'sort_order'
@@ -40,7 +46,8 @@ function field(f: ModuleField): Field {
   if (f.required) out.required = true
   if (f.help) out.help = f.help
   if (f.placeholder) out.placeholder = f.placeholder
-  if (f.options?.length) out.options = f.options.map((o) => ({ value: o.value, label: o.label }))
+  if (f.options?.length) out.options = f.options.map((o) => ({ value: o.value, label: o.label, ...(o.icon ? { icon: o.icon } : {}) }))
+  if (f.optionsFrom) out.optionsFrom = { source: f.optionsFrom.source, label: f.optionsFrom.label, ...(f.optionsFrom.value ? { value: f.optionsFrom.value } : {}) }
   if (f.min !== undefined) out.min = f.min
   if (f.max !== undefined) out.max = f.max
   if (f.maxLength !== undefined) out.maxLength = f.maxLength
@@ -51,6 +58,40 @@ function field(f: ModuleField): Field {
 
 function visibilityFlag(fields: ModuleField[]): string | undefined {
   return fields.find((f) => f.type === 'boolean' && (f.key === 'visible' || f.key === 'available'))?.key
+}
+
+/** The reason wording used when a binding gives none. */
+export const BINDING_REASONS = {
+  read: (contract: string) => `Reads the business's ${contract.replace('.', ' ')} to show them.`,
+  write: (contract: string) => `Edits the business's ${contract.replace('.', ' ')} from inside this app.`,
+}
+
+/**
+ * Permissions implied by the draft's bindings, in binding order: read, then
+ * write for read-write, one entry per resource (the first binding's reasons win).
+ */
+export function permissionsFromBindings(bindings: Record<string, ModuleBinding> | undefined): NonNullable<Manifest['permissions']> {
+  const out: NonNullable<Manifest['permissions']> = []
+  const seen = new Set<string>()
+  for (const b of Object.values(bindings ?? {})) {
+    const resource = resourceForContract(b.contract)
+    if (!resource) continue
+    const read = `${resource}:read`
+    if (!seen.has(read)) {
+      seen.add(read)
+      out.push({ id: read, reason: b.reason ?? BINDING_REASONS.read(b.contract) })
+    }
+    if (b.access === 'read-write') {
+      const write = `${resource}:write`
+      if (!seen.has(write)) {
+        seen.add(write)
+        const perm: NonNullable<Manifest['permissions']>[number] = { id: write, reason: b.write?.reason ?? BINDING_REASONS.write(b.contract) }
+        if (b.write?.optional) perm.optional = true
+        out.push(perm)
+      }
+    }
+  }
+  return out
 }
 
 function hasSetting(m: ModuleManifest, key: string, type?: ModuleField['type']) {
@@ -75,7 +116,7 @@ function publicViews(m: ModuleManifest, s: PublicSurface): View[] {
     }
     case 'listings':
       return [{ type: 'list', source: s.collection, heading, style: variant === 'list' || variant === 'cards' ? variant : 'grid', fields: pick({
-        title: c.titleField, subtitle: has('address'), image: has(s.imageField), value: has(s.priceField), badge: has(s.badgeField),
+        title: c.titleField, subtitle: has(s.subtitleField), image: has(s.imageField), value: has(s.priceField), badge: has(s.badgeField),
         link: has(s.linkField), body: has(s.bodyField), meta: (s.metaFields ?? []).filter((k) => keys.includes(k)),
       }) }]
     case 'form': {
@@ -118,21 +159,28 @@ export function engineManifestFromModule(m: ModuleManifest, identity: { publishe
 
   const tables: NonNullable<Manifest['data']>['tables'] = {}
   const sources: NonNullable<Manifest['ui']>['sources'] = {}
+  const bindings: NonNullable<Manifest['bindings']> = {}
+  for (const [key, b] of Object.entries(m.bindings ?? {})) {
+    bindings[key] = { contract: b.contract as NonNullable<Manifest['bindings']>[string]['contract'], access: b.access, ...(b.fieldMap ? { fieldMap: b.fieldMap } : {}) }
+  }
   for (const [key, c] of Object.entries(m.collections)) {
-    const columns: Record<string, { type: string; required?: boolean; default?: string | number | boolean; max_length?: number }> = {}
-    for (const f of c.fields) {
-      const col: (typeof columns)[string] = { type: COLUMN[f.type] }
-      if (f.required) col.required = true
-      if (f.defaultValue !== undefined) col.default = f.defaultValue
-      if (f.maxLength !== undefined && COLUMN[f.type] === 'text') col.max_length = f.maxLength
-      columns[f.key] = col
-    }
-    if (c.sortable && !columns[ORDER_COLUMN]) columns[ORDER_COLUMN] = { type: 'integer' }
-    const access = c.publicRead && c.publicWrite ? 'read-append' : c.publicRead ? 'read' : c.publicWrite ? 'append' : 'none'
-    tables[key] = { columns, public: access }
-
-    const source: NonNullable<Manifest['ui']>['sources'][string] = {
-      from: 'app', table: key, label: c.label, labelSingular: c.labelSingular, fields: c.fields.map(field), title: c.titleField,
+    let source: NonNullable<Manifest['ui']>['sources'][string]
+    if (c.binding) {
+      // Business data: no table; the binding's contract says where the rows live.
+      source = { from: 'business', binding: c.binding, label: c.label, labelSingular: c.labelSingular, fields: c.fields.map(field), title: c.titleField }
+    } else {
+      const columns: Record<string, { type: string; required?: boolean; default?: string | number | boolean; max_length?: number }> = {}
+      for (const f of c.fields) {
+        const col: (typeof columns)[string] = { type: COLUMN[f.type] }
+        if (f.required) col.required = true
+        if (f.defaultValue !== undefined) col.default = f.defaultValue
+        if (f.maxLength !== undefined && COLUMN[f.type] === 'text') col.max_length = f.maxLength
+        columns[f.key] = col
+      }
+      if (c.sortable && !columns[ORDER_COLUMN]) columns[ORDER_COLUMN] = { type: 'integer' }
+      const access = c.publicRead && c.publicWrite ? 'read-append' : c.publicRead ? 'read' : c.publicWrite ? 'append' : 'none'
+      tables[key] = { columns, public: access }
+      source = { from: 'app', table: key, label: c.label, labelSingular: c.labelSingular, fields: c.fields.map(field), title: c.titleField }
     }
     if (c.subtitleField) source.subtitle = c.subtitleField
     if (c.groupField) source.group = c.groupField
@@ -140,7 +188,7 @@ export function engineManifestFromModule(m: ModuleManifest, identity: { publishe
       source.sortable = true
       source.order = ORDER_COLUMN
     }
-    const flag = visibilityFlag(c.fields)
+    const flag = c.visibleField ?? visibilityFlag(c.fields)
     if (flag) source.visibleWhen = flag
     sources[key] = source
   }
@@ -166,8 +214,9 @@ export function engineManifestFromModule(m: ModuleManifest, identity: { publishe
     requires: { platform: '1' },
     runtime: { type: 'engine', engine: '1' },
     surfaces,
-    permissions: [],
-    data: { namespace: id.replace(/-/g, '_').slice(0, 40), tables },
+    permissions: permissionsFromBindings(m.bindings),
+    ...(Object.keys(tables).length ? { data: { namespace: id.replace(/-/g, '_').slice(0, 40), tables } } : {}),
+    ...(Object.keys(bindings).length ? { bindings } : {}),
     config: m.settings.map((s) => {
       const c: NonNullable<Manifest['config']>[number] = { key: s.key, label: s.label, type: CONFIG[s.type] }
       if (s.required) c.required = true
@@ -179,6 +228,9 @@ export function engineManifestFromModule(m: ModuleManifest, identity: { publishe
     ui: { sources, views },
   }
   if (m.pricing.model === 'free') out.pricing = { model: 'free' }
-  if (hasSetting(m, 'currency')) out.ui!.format = { currency: { setting: 'currency' } }
+  // Currency: the business's own when a binding reads business.currency; else the install setting.
+  const currencyBinding = Object.entries(m.bindings ?? {}).find(([, b]) => b.contract === 'business.currency')?.[0]
+  if (currencyBinding) out.ui!.format = { currency: { binding: currencyBinding } }
+  else if (hasSetting(m, 'currency')) out.ui!.format = { currency: { setting: 'currency' } }
   return out
 }

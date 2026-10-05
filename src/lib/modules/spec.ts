@@ -40,8 +40,12 @@ export const fieldSchema = z.object({
   required: z.boolean().default(false),
   help: z.string().max(200).optional(),
   placeholder: z.string().max(120).optional(),
-  /** Options for `select` fields. */
-  options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
+  /** Options for `select` fields; `icon` is what a links view draws for the option. */
+  options: z.array(z.object({ value: z.string(), label: z.string(), icon: z.string().max(16).optional() })).optional(),
+  /** Options read from another collection's rows (engine `optionsFrom`): the value is that row's id. */
+  optionsFrom: z
+    .object({ source: z.string().regex(/^[a-z][a-z0-9_]*$/), label: z.string().regex(/^[a-z][a-z0-9_]*$/), value: z.string().regex(/^[a-z][a-z0-9_]*$/).optional() })
+    .optional(),
   /** Bounds for `number` / `money`, max length for text types. */
   min: z.number().optional(),
   max: z.number().optional(),
@@ -63,8 +67,15 @@ export const collectionSchema = z.object({
   subtitleField: z.string().optional(),
   /** Optional select field used to group rows into sections. */
   groupField: z.string().optional(),
+  /** Optional boolean field that hides a row publicly when false (engine `visibleWhen`). */
+  visibleField: z.string().optional(),
   /** Owner can drag to reorder rows; otherwise newest first. */
   sortable: z.boolean().default(false),
+  /**
+   * Rows live in the business, not in this app: the key of a `bindings`
+   * entry (DECISIONS #45). Such a collection has no table of its own.
+   */
+  binding: z.string().regex(/^[a-z][a-z0-9_]*$/).optional(),
   /** Anyone with the public link can read these rows. */
   publicRead: z.boolean().default(false),
   /** Anyone with the public link can create rows (a form, a request box). */
@@ -178,6 +189,24 @@ export const VARIANT_LABELS: Record<DisplayVariant, string> = {
   feature: 'Featured',
 }
 
+/**
+ * A data contract the app reads or writes (DECISIONS #45): a dotted name whose
+ * family decides the permission (engine `CONTRACT_FAMILIES`), how far the app
+ * may go, and why — the reasons become the manifest's permission reasons.
+ */
+export const bindingSchema = z.object({
+  contract: z.string().regex(/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/, 'A contract is a dotted name, like menu.items.'),
+  access: z.enum(['read', 'read-write']),
+  /** Field key → the contract's column name, when they differ. */
+  fieldMap: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), z.string().regex(/^[a-z][a-z0-9_]*$/)).optional(),
+  /** Why the app reads this (the `<resource>:read` permission's reason). */
+  reason: z.string().min(8).max(200).optional(),
+  /** Why, and whether optionally, the app writes it (the `<resource>:write` permission). */
+  write: z.object({ reason: z.string().min(8).max(200).optional(), optional: z.boolean().optional() }).optional(),
+})
+
+export type ModuleBinding = z.infer<typeof bindingSchema>
+
 export const publicSurfaceSchema = z.object({
   template: publicTemplateSchema,
   /** Collection rendered by the template. */
@@ -193,6 +222,7 @@ export const publicSurfaceSchema = z.object({
    * renderer honest without hard-coding field names per module.
    */
   imageField: z.string().optional(),
+  subtitleField: z.string().optional(),
   priceField: z.string().optional(),
   metaFields: z.array(z.string()).max(4).optional(),
   badgeField: z.string().optional(),
@@ -254,6 +284,8 @@ export const manifestSchema = z
     /** Per-install configuration the owner edits in Settings. */
     settings: z.array(fieldSchema).max(20).default([]),
     collections: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), collectionSchema),
+    /** Business data the app is bound to, by key (DECISIONS #45). */
+    bindings: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), bindingSchema).optional(),
     /** Omitted entirely for headless / back-office-only modules. */
     publicSurface: publicSurfaceSchema.optional(),
   })
@@ -270,7 +302,14 @@ export const manifestSchema = z
         })
       }
 
-      for (const reference of [collection.titleField, collection.subtitleField, collection.groupField]) {
+      if (collection.binding && !manifest.bindings?.[collection.binding]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Collection "${key}" is bound to "${collection.binding}", which bindings does not declare.`,
+        })
+      }
+
+      for (const reference of [collection.titleField, collection.subtitleField, collection.groupField, collection.visibleField]) {
         if (reference && !fieldKeys.includes(reference)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -324,6 +363,7 @@ export const manifestSchema = z
       const surfaceFields = manifest.collections[surface.collection]?.fields.map((f) => f.key) ?? []
       const slots: [string, string | undefined][] = [
         ['imageField', surface.imageField],
+        ['subtitleField', surface.subtitleField],
         ['priceField', surface.priceField],
         ['badgeField', surface.badgeField],
         ['linkField', surface.linkField],

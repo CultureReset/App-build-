@@ -4,9 +4,20 @@ import { embedSrc } from '../src/lib/runtime/embeds.ts'
 import { coerceTheme, defaultTheme, themeSchema, themeToCssVars, contrastOn, THEME_PRESETS } from '../src/lib/theme/spec.ts'
 import { BUILTIN_TEMPLATES, pageTemplateSchema } from '../src/lib/theme/templates.ts'
 import { TEMPLATE_VARIANTS, resolveVariant, safeParseManifest } from '../src/lib/modules/spec.ts'
-import listings from '../src/modules/listings/manifest.ts'
-import video from '../src/modules/video/manifest.ts'
-import actionButtons from '../src/modules/action-buttons/manifest.ts'
+import { manifestFromDraft } from '../src/lib/modules/derive.ts'
+import { shippedManifests, draftFromEngineManifest } from '../src/lib/engine/starters.ts'
+
+/**
+ * The retired layouts (BUILTIN_TEMPLATES) name apps by their short id, which
+ * is the directory under apps/ — one definition per app (DECISIONS #42).
+ * The legacy starters' ids differ for two: lead-capture is apps/enquiry-form,
+ * song-request is apps/song-requests.
+ */
+const shipped = shippedManifests()
+const LEGACY_IDS: Record<string, string> = { 'lead-capture': 'enquiry-form', 'song-request': 'song-requests' }
+const shippedApp = (id: string) => shipped.find((s) => s.dir === (LEGACY_IDS[id] ?? id))?.manifest
+const moduleOf = (id: string) => manifestFromDraft(draftFromEngineManifest(shippedApp(id)!))
+const listings = moduleOf('listings')
 
 test('only YouTube and Vimeo can be embedded', () => {
   const rejected = [
@@ -68,16 +79,14 @@ test('every built-in layout satisfies the layout schema', () => {
   }
 })
 
-test('a built-in layout only names modules that exist and can be public', async () => {
-  const { getBuiltinModule } = await import('../src/lib/modules/builtins.ts')
-
+test('a built-in layout only names apps that ship and can be public', () => {
   for (const template of BUILTIN_TEMPLATES) {
     for (const block of template.plan) {
-      const manifest = getBuiltinModule(block.module_id)
+      const manifest = shippedApp(block.module_id)
 
-      assert.ok(manifest, `${template.slug} names unknown module "${block.module_id}"`)
+      assert.ok(manifest, `${template.slug} names unknown app "${block.module_id}"`)
       assert.ok(
-        manifest.publicSurface,
+        manifest.surfaces?.some((s) => s.kind === 'public'),
         `${template.slug} names "${block.module_id}", which has no public surface`,
       )
     }
@@ -89,15 +98,7 @@ test('a built-in layout only uses variants its template supports', () => {
     for (const block of template.plan) {
       if (!block.display_variant) continue
 
-      const surface =
-        block.module_id === 'listings'
-          ? listings.publicSurface
-          : block.module_id === 'video'
-            ? video.publicSurface
-            : block.module_id === 'action-buttons'
-              ? actionButtons.publicSurface
-              : undefined
-
+      const surface = moduleOf(block.module_id).publicSurface
       if (!surface) continue
 
       assert.ok(

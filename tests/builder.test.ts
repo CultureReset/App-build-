@@ -1,42 +1,31 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { BUILTIN_MODULES } from '../src/lib/modules/builtins.ts'
-import {
-  deriveManifest,
-  draftFromManifest,
-  nextVersion,
-  validateDraft,
-} from '../src/lib/modules/derive.ts'
+import { shippedManifests, draftFromEngineManifest } from '../src/lib/engine/starters.ts'
+import { deriveManifest, draftFromManifest, nextVersion, validateDraft } from '../src/lib/modules/derive.ts'
 import { TEMPLATE_INFO, TEMPLATE_ORDER } from '../src/lib/modules/templates.ts'
 import { TEMPLATE_VARIANTS, type ModuleManifest } from '../src/lib/modules/spec.ts'
 
 /**
- * The builder must be able to express everything the shipped apps express.
- * If a built-in cannot survive a round trip through the builder's draft shape,
- * then a user could not have built that app — which would mean the platform
- * still has privileged, hardwired apps.
+ * The builder must be able to express everything the shipped apps express
+ * (apps/<name>/manifest.json, DECISIONS #42). If a shipped app cannot survive
+ * a round trip through the builder's draft shape, a user could not have built
+ * it — which would mean the platform still has privileged, hardwired apps.
  */
-test('every built-in app round-trips through the builder unchanged', () => {
-  for (const manifest of BUILTIN_MODULES) {
-    const rebuilt = deriveManifest(draftFromManifest(manifest)) as ModuleManifest
+const shipped = shippedManifests()
+const draftOf = (dir: string) => draftFromEngineManifest(shipped.find((s) => s.dir === dir)!.manifest)
 
-    assert.deepEqual(
-      rebuilt,
-      manifest,
-      `${manifest.id} is not reproducible from the builder's draft shape`,
-    )
-  }
-})
-
-test('a builder draft always produces a valid manifest', () => {
-  for (const manifest of BUILTIN_MODULES) {
-    const result = validateDraft(draftFromManifest(manifest))
-    assert.equal(result.success, true, `${manifest.id} failed validation after a round trip`)
+test('every shipped app becomes a draft the builder accepts, and round-trips through it unchanged', () => {
+  for (const { dir, manifest } of shipped) {
+    const draft = draftFromEngineManifest(manifest)
+    const result = validateDraft(draft)
+    assert.equal(result.success, true, `${dir}: ${result.success ? '' : result.error.issues[0]?.message}`)
+    const derived = deriveManifest(draft) as ModuleManifest
+    assert.deepEqual(draftFromManifest(derived), draft, `${dir} is not reproducible from the builder's draft shape`)
   }
 })
 
 test('permissions are derived from behaviour, not declared by the author', () => {
-  const base = draftFromManifest(BUILTIN_MODULES.find((m) => m.id === 'faq')!)
+  const base = draftOf('faq')
 
   const headless = deriveManifest({ ...base, publicSurface: undefined }) as ModuleManifest
   assert.deepEqual(headless.permissions, ['store_records'])
@@ -45,33 +34,34 @@ test('permissions are derived from behaviour, not declared by the author', () =>
   assert.ok(published.permissions.includes('public_page'))
   assert.ok(!published.permissions.includes('collect_submissions'))
 
+  const [collectionKey] = Object.keys(base.collections)
   const collecting = deriveManifest({
     ...base,
-    publicSurface: {
-      template: 'form',
-      collection: 'entries',
-      submitCollection: 'entries',
-    },
+    publicSurface: { template: 'form', collection: collectionKey, submitCollection: collectionKey },
   }) as ModuleManifest
   assert.ok(collecting.permissions.includes('collect_submissions'))
 })
 
 test('a form collection is writable by visitors but never publicly readable', () => {
-  const base = draftFromManifest(BUILTIN_MODULES.find((m) => m.id === 'lead-capture')!)
-  const derived = deriveManifest(base) as ModuleManifest
-
-  assert.equal(derived.collections.enquiries.publicWrite, true)
-  assert.equal(derived.collections.enquiries.publicRead, false)
+  const derived = deriveManifest(draftOf('enquiry-form')) as ModuleManifest
+  const [collection] = Object.values(derived.collections)
+  assert.equal(collection.publicWrite, true)
+  assert.equal(collection.publicRead, false)
 })
 
 test('a headless app exposes no collection publicly', () => {
-  const base = draftFromManifest(BUILTIN_MODULES.find((m) => m.id === 'listings')!)
-  const derived = deriveManifest({ ...base, publicSurface: undefined }) as ModuleManifest
-
+  const derived = deriveManifest({ ...draftOf('listings'), publicSurface: undefined }) as ModuleManifest
   for (const collection of Object.values(derived.collections)) {
     assert.equal(collection.publicRead, false)
     assert.equal(collection.publicWrite, false)
   }
+})
+
+test('a collection bound to the business names a declared binding', () => {
+  const base = draftOf('faq')
+  const [key] = Object.keys(base.collections)
+  const broken = validateDraft({ ...base, collections: { [key]: { ...base.collections[key], binding: 'nowhere' } } })
+  assert.equal(broken.success, false)
 })
 
 test('every template the builder offers is one the runtime can render', () => {
@@ -79,12 +69,7 @@ test('every template the builder offers is one the runtime can render', () => {
     assert.ok(TEMPLATE_INFO[template], `${template} has no builder description`)
     assert.ok(TEMPLATE_VARIANTS[template]?.length > 0, `${template} has no variants`)
   }
-
-  assert.equal(
-    TEMPLATE_ORDER.length,
-    Object.keys(TEMPLATE_INFO).length,
-    'a template exists that the builder never offers',
-  )
+  assert.equal(TEMPLATE_ORDER.length, Object.keys(TEMPLATE_INFO).length, 'a template exists that the builder never offers')
 })
 
 test('version bumps behave', () => {

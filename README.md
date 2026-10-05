@@ -26,10 +26,13 @@ This repo is NEXT GENT's **shared app engine** and its **app builder** (plan §3
   actions) into blocks, a React drawer for Play-user and gcr-unified, a plain-HTML drawer for static
   public blocks, and a data adapter that only ever calls gcr-api-clean. No dependencies, no app names.
   Its README documents the manifest, the views, the block vocabulary and the gcr-api-clean routes.
-- **The apps** that shipped here are converted to engine manifests in `apps/<name>/manifest.json`.
-  `src/modules/*/manifest.ts` stay as the builder's starting points and the retired store's seeds.
+- **The apps** that ship are defined once, as engine manifests in `apps/<name>/manifest.json`
+  (DECISIONS #42). The builder starts from them (`src/lib/engine/starters.ts`, `draftFromEngineManifest`),
+  keeping business bindings; the home page lists them. `src/modules/*/manifest.ts` are retired and frozen —
+  read only by the switched-off platform (its catalogue, demo page, seed and layouts).
 - **The builder** (manual, describe-it, speak-it) is at `/build` with no login. It still edits the same
-  draft (`src/lib/modules/derive.ts`); its output is an engine manifest
+  draft (`src/lib/modules/derive.ts`), now with business sources: a collection can be bound to a data
+  contract (`bindings`, DECISIONS #45) instead of its own table. Its output is an engine manifest
   (`src/lib/engine/from-module.ts`) to download or publish into Paperclip's store
   (`POST /api/store/admin/items`, then `/versions`).
 - **Retired, switched off, not deleted:** App-build-'s own login, its own Supabase project and its own
@@ -331,7 +334,9 @@ src/lib/modules/spec.ts          The manifest contract — the heart of the plat
 src/lib/modules/catalogue.ts     Reads modules from the database
 src/lib/modules/derive.ts        Turns a builder draft into a validated manifest
 src/lib/modules/templates.ts     The template registry the builder reads
-src/lib/modules/builtins.ts      Seed source for the apps that ship
+src/lib/modules/builtins.ts      Retired: the frozen starters' index, read only with the legacy switch on
+src/lib/engine/starters.ts       The apps that ship, from apps/*/manifest.json, as builder drafts
+apps/<name>/manifest.json        The apps themselves — one engine manifest each, the only definition
 src/lib/runtime/values.ts        Server-side validation for every write
 src/lib/runtime/embeds.ts        The embed allowlist
 src/lib/theme/spec.ts            The theme contract and its presets
@@ -348,7 +353,7 @@ src/lib/ai/generate.ts           The one, provider-agnostic generation call
 src/components/settings/         Per-account AI provider configuration
 scripts/                         Seed generators and the database test runner
 supabase/tests/                  Database security tests
-src/modules/<id>/manifest.ts     The apps themselves — declarations only
+src/modules/<id>/manifest.ts     Retired, frozen starters (definitions live in apps/*/manifest.json)
 src/app/dashboard/               Owner-facing screens and server actions
 src/components/ghost/            My Ghost panel (calls gcr-api-clean /api/nodes)
 src/lib/supabase/                Browser and server Supabase clients (anon key only)

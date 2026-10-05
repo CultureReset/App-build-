@@ -1,31 +1,56 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listStoreModules } from '@/lib/modules/catalogue'
-import { BUILTIN_MODULES } from '@/lib/modules/builtins'
+import { shippedManifests } from '@/lib/engine/starters'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
 import { legacyPlatformEnabled } from '@/lib/legacy'
-import type { ModuleManifest } from '@/lib/modules/spec'
 
 /** Rendered per request: the store is data, so this reflects what is live. */
 export const dynamic = 'force-dynamic'
 
+/** One card of the catalogue, whichever definition it came from. */
+interface Listed {
+  id: string
+  name: string
+  icon: string
+  tagline: string
+  publicFace: boolean
+  category?: string
+  accent?: string
+}
+
 /**
- * Shows what is actually published. Before the database is configured this
- * falls back to the manifests that ship with the platform, so the marketing
- * page still renders on a fresh checkout.
+ * Shows the apps that ship: apps/<name>/manifest.json, the one definition of
+ * each (DECISIONS #42). Only with the retired platform switched on does the
+ * page read App-build-'s own store instead, as it always did.
  */
-async function catalogue(): Promise<ModuleManifest[]> {
-  if (!isSupabaseConfigured()) {
-    return BUILTIN_MODULES
-  }
+async function catalogue(): Promise<Listed[]> {
+  const shipped = (): Listed[] =>
+    shippedManifests().map(({ dir, manifest }) => ({
+      id: dir,
+      name: manifest.name,
+      icon: manifest.icon ?? '🧩',
+      tagline: manifest.summary ?? '',
+      publicFace: Boolean(manifest.surfaces?.some((s) => s.kind === 'public')),
+    }))
+
+  if (!legacyPlatformEnabled() || !isSupabaseConfigured()) return shipped()
 
   try {
     const supabase = await createServerSupabase()
     const entries = await listStoreModules(supabase)
-
-    return entries.length > 0 ? entries.map((entry) => entry.manifest) : BUILTIN_MODULES
+    if (!entries.length) return shipped()
+    return entries.map(({ manifest: m }) => ({
+      id: m.id,
+      name: m.name,
+      icon: m.icon,
+      tagline: m.tagline,
+      publicFace: Boolean(m.publicSurface),
+      category: m.category,
+      accent: m.accent,
+    }))
   } catch {
-    return BUILTIN_MODULES
+    return shipped()
   }
 }
 
@@ -130,22 +155,22 @@ export default async function LandingPage() {
           </div>
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module: ModuleManifest) => (
+          {modules.map((module) => (
             <div
               key={module.id}
               className="rounded-xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20"
             >
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-xl"
-                style={{ backgroundColor: `${module.accent}22` }}
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-xl"
+                style={module.accent ? { backgroundColor: `${module.accent}22` } : undefined}
               >
                 {module.icon}
               </div>
               <h3 className="mt-4 font-medium">{module.name}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-400">{module.tagline}</p>
               <div className="mt-4 flex items-center gap-2 text-xs text-ink-500">
-                <span className="chip bg-white/5 text-ink-300">{module.category}</span>
-                {module.publicSurface ? (
+                {module.category ? <span className="chip bg-white/5 text-ink-300">{module.category}</span> : null}
+                {module.publicFace ? (
                   <span className="chip bg-white/5 text-ink-300">public page</span>
                 ) : (
                   <span className="chip bg-white/5 text-ink-300">behind the scenes</span>

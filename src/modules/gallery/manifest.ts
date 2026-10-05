@@ -1,3 +1,6 @@
+// retired: definitions live in apps/*/manifest.json
+// This starter is frozen. It is read only by the retired platform
+// (APP_BUILD_LEGACY_PLATFORM=on): catalogue, demo page, seed and layouts.
 import type { ModuleManifest } from '@/lib/modules/spec'
 
 const manifest: ModuleManifest = {

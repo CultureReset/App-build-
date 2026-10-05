@@ -3,18 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import ModuleBuilder from '@/components/build/ModuleBuilder'
-import { blankDraft, starterDrafts } from '@/lib/engine/drafts'
+import { blankDraft } from '@/lib/engine/drafts'
 import type { ModuleDraft } from '@/lib/modules/derive'
+
+export type Starter = { id: string; name: string; draft: ModuleDraft }
 
 /**
  * The app builder without App-build-'s own login or store: pick a start
- * (blank, or one of the shipped apps), edit it in the same ModuleBuilder,
- * and take the engine manifest to the Paperclip store.
+ * (blank, or one of the shipped apps — apps/<name>/manifest.json, read on the
+ * server by lib/engine/starters.ts and passed in), edit it in the same
+ * ModuleBuilder, and take the engine manifest to the Paperclip store.
  */
-export default function StoreBuilder({ initial, describeAvailable }: { initial?: ModuleDraft; describeAvailable: boolean }) {
+export default function StoreBuilder({ initial, describeAvailable, starters = [] }: { initial?: ModuleDraft; describeAvailable: boolean; starters?: Starter[] }) {
   const [draft, setDraft] = useState<ModuleDraft | null>(initial ?? null)
   const [name, setName] = useState('')
-  const starters = starterDrafts()
 
   if (draft) {
     return (

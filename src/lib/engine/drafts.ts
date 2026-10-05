@@ -1,5 +1,4 @@
-import { draftFromManifest, type ModuleDraft } from '@/lib/modules/derive'
-import { BUILTIN_MODULES } from '@/lib/modules/builtins'
+import type { ModuleDraft } from '@/lib/modules/derive'
 
 /**
  * Starting drafts for the store-mode builder. The draft shape is the
@@ -35,10 +34,8 @@ export function blankDraft(name: string): ModuleDraft {
   }
 }
 
-/** Every shipped app, as a draft to start from. */
-export function starterDrafts(): { id: string; name: string; draft: ModuleDraft }[] {
-  return BUILTIN_MODULES.map((m) => ({ id: m.id, name: m.name, draft: draftFromManifest(m) }))
-}
+// The shipped apps as drafts: starterDrafts() in ./starters.ts (server-side,
+// it reads apps/*/manifest.json — one definition per app, DECISIONS #42).
 
 /** A describe-it proposal needs an accent and author too; the same placeholders. */
 export const draftContext = PLACEHOLDER

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { CONTRACTS } from '@nextgent/app-engine'
 import FieldEditor from '@/components/build/FieldEditor'
 import ManifestPanel from '@/components/build/ManifestPanel'
 import { blankField, keyFrom } from '@/lib/modules/field-key'
@@ -76,6 +77,35 @@ export default function ModuleBuilder({
       ...current,
       collections: { ...current.collections, [collectionKey]: { ...collection, ...next } },
     }))
+    setSaved(false)
+  }
+
+  /**
+   * Where the entries live: in the app's own table, or in the business under a
+   * data contract (DECISIONS #45). Picking a contract adds a binding keyed by
+   * the contract name and points the collection at it; "this app" removes it.
+   */
+  function setSource(contract: string) {
+    setDraft((current) => {
+      const col = current.collections[collectionKey]
+      const bindings = { ...(current.bindings ?? {}) }
+      if (col.binding) delete bindings[col.binding]
+      const rest = { ...col }
+      delete rest.binding
+      if (!contract) {
+        return { ...current, bindings: Object.keys(bindings).length ? bindings : undefined, collections: { ...current.collections, [collectionKey]: rest } }
+      }
+      const key = contract.replace(/[^a-z0-9]+/g, '_')
+      bindings[key] = { contract, access: 'read-write' }
+      return { ...current, bindings, collections: { ...current.collections, [collectionKey]: { ...rest, binding: key } } }
+    })
+    setSaved(false)
+  }
+
+  function setBindingAccess(access: 'read' | 'read-write') {
+    const key = collection.binding
+    if (!key) return
+    setDraft((current) => ({ ...current, bindings: { ...(current.bindings ?? {}), [key]: { ...current.bindings![key], access } } }))
     setSaved(false)
   }
 
@@ -261,6 +291,43 @@ export default function ModuleBuilder({
               has.
             </p>
           </div>
+
+          {storeMode ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="collection-source">
+                  Where do the entries live?
+                </label>
+                <select
+                  id="collection-source"
+                  className="field font-mono"
+                  value={collection.binding ? draft.bindings?.[collection.binding]?.contract ?? '' : ''}
+                  onChange={(event) => setSource(event.target.value)}
+                >
+                  <option value="">In this app (its own table)</option>
+                  {CONTRACTS.map((contract) => (
+                    <option key={contract} value={contract}>
+                      {contract}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-ink-500">
+                  A contract names data the business already keeps; the app shows that, and asks for the permission it implies.
+                </p>
+              </div>
+              {collection.binding ? (
+                <label className="flex items-center gap-2 self-end pb-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+                    checked={draft.bindings?.[collection.binding]?.access === 'read-write'}
+                    onChange={(event) => setBindingAccess(event.target.checked ? 'read-write' : 'read')}
+                  />
+                  <span>The app may also edit them</span>
+                </label>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>

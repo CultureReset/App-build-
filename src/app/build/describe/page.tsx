@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import StoreDescribe from '@/components/build/StoreDescribe'
 import { storeAiAvailable } from '@/app/build/ai-actions'
+import { starterDrafts } from '@/lib/engine/starters'
 
 export const metadata = { title: 'Describe your app' }
 export const dynamic = 'force-dynamic'
@@ -18,7 +19,7 @@ export default async function StoreDescribePage() {
         Say what you need, or tap the microphone and say it. You land in the same builder, and the
         result is a store manifest.
       </p>
-      <StoreDescribe configured={configured} />
+      <StoreDescribe configured={configured} starters={starterDrafts()} />
     </main>
   )
 }

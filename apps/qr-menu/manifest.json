@@ -47,6 +47,16 @@
       "optional": true
     }
   ],
+  "bindings": {
+    "menu_sections": {
+      "contract": "menu.sections",
+      "access": "read-write"
+    },
+    "menu_items": {
+      "contract": "menu.items",
+      "access": "read-write"
+    }
+  },
   "config": [
     {
       "key": "currency",
@@ -73,8 +83,7 @@
     "sources": {
       "sections": {
         "from": "business",
-        "section": "menu_sections",
-        "resource": "menu",
+        "binding": "menu_sections",
         "label": "Menu sections",
         "labelSingular": "Section",
         "fields": [
@@ -92,8 +101,7 @@
       },
       "items": {
         "from": "business",
-        "section": "menu_items",
-        "resource": "menu",
+        "binding": "menu_items",
         "label": "Menu items",
         "labelSingular": "Menu item",
         "fields": [

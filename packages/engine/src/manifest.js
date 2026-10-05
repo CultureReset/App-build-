@@ -34,7 +34,8 @@ const PUBLISHER = /^[a-z][a-z0-9-]*$/
 const SLUG = /^[a-z][a-z0-9-]*$/
 const KEY = /^[a-z][a-z0-9_]*$/
 const SURFACE_ID = /^[a-z][a-z0-9_-]*$/
-const DOTTED = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
+/** Dotted names (events, contracts, capabilities). Segments may carry dashes: app events are `<appKey>.<event>` and app keys do (DECISIONS #54). */
+const DOTTED = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/
 const REL_PATH = /^\/[^\s]*$/
 const PLATFORM = /^\^?\d+(\.\d+)?(\.\d+)?$/
 const CURRENCY = /^[A-Z]{3}$/

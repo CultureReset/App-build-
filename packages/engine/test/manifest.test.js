@@ -331,3 +331,9 @@ test('events are still validated', () => {
   assert.ok(has(sampleManifest({ events: { emits: ['nodots'] } }), 'events.emits[0] must match'))
   assert.equal(validateManifest(sampleManifest({ events: { emits: ['sample.note_added'] } })).ok, true)
 })
+
+test('dotted names allow dashes inside segments (app events are <appKey>.<event>, DECISIONS #54)', () => {
+  assert.equal(validateManifest(sampleManifest({ events: { emits: ['qr-menu.submitted'] } })).ok, true)
+  assert.ok(has(sampleManifest({ events: { emits: ['Qr.menu'] } }), 'events.emits[0] must match'))
+  assert.ok(has(sampleManifest({ events: { emits: ['-qr.menu'] } }), 'events.emits[0] must match'))
+})

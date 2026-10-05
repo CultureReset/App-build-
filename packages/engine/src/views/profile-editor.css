@@ -1,0 +1,9 @@
+/* Admin template: profile-editor — tokens --ng-profile-editor-* */
+.ng-blocks {
+  --ng-profile-editor-gap: var(--ng-gap);
+  --ng-profile-editor-columns: 1fr;
+  --ng-profile-editor-label-color: var(--ng-muted);
+}
+.ng-section:has(> .ng-form:only-child) > .ng-form { gap: var(--ng-profile-editor-gap); grid-template-columns: var(--ng-profile-editor-columns); }
+.ng-section:has(> .ng-form:only-child) > .ng-form .ng-field--longtext, .ng-section:has(> .ng-form:only-child) > .ng-form > button { grid-column: 1 / -1; }
+.ng-section:has(> .ng-form:only-child) .ng-field-label { color: var(--ng-profile-editor-label-color); }

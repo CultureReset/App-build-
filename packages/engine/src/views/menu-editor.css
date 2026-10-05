@@ -1,0 +1,12 @@
+/* Admin template: menu-editor — tokens --ng-menu-editor-* */
+.ng-blocks {
+  --ng-menu-editor-gap: var(--ng-gap);
+  --ng-menu-editor-section-bg: transparent;
+  --ng-menu-editor-section-radius: var(--ng-radius);
+  --ng-menu-editor-price-width: 8rem;
+  --ng-menu-editor-actions-gap: 0.25rem;
+}
+.ng-section:has(> .ng-list--menu-compact .ng-item-form) { gap: var(--ng-menu-editor-gap); background: var(--ng-menu-editor-section-bg); border-radius: var(--ng-menu-editor-section-radius); }
+.ng-list--menu-compact .ng-item-form .ng-form { grid-template-columns: var(--ng-menu-editor-price-width) auto; }
+.ng-list--menu-compact .ng-item-form .ng-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ng-list--menu-compact .ng-item-actions { gap: var(--ng-menu-editor-actions-gap); }

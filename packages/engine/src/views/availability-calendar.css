@@ -1,0 +1,10 @@
+/* Admin template: availability-calendar — tokens --ng-availability-calendar-* */
+.ng-blocks {
+  --ng-availability-calendar-gap: var(--ng-calendar-gap);
+  --ng-availability-calendar-day-min: 5.5rem;
+  --ng-availability-calendar-add-size: 0.8rem;
+  --ng-availability-calendar-entry-bg: var(--ng-calendar-entry-bg);
+}
+.ng-calendar:has(.ng-day-actions) { --ng-calendar-gap: var(--ng-availability-calendar-gap); --ng-calendar-day-min: var(--ng-availability-calendar-day-min); --ng-calendar-entry-bg: var(--ng-availability-calendar-entry-bg); }
+.ng-calendar:has(.ng-day-actions) .ng-day-actions .ng-button { font-size: var(--ng-availability-calendar-add-size); padding: 0.1rem 0.4rem; }
+.ng-calendar:has(.ng-day-actions) .ng-day-actions .ng-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

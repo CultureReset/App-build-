@@ -34,6 +34,11 @@ import gallery from './gallery.js'
 import menu from './menu.js'
 import listings from './listings.js'
 import availability from './availability.js'
+import profileEditor from './profile-editor.js'
+import mediaManager from './media-manager.js'
+import menuEditor from './menu-editor.js'
+import listingManager from './listing-manager.js'
+import availabilityCalendar from './availability-calendar.js'
 
 const NAME = /^[a-z][a-z0-9-]*$/
 const registry = new Map()
@@ -119,4 +124,4 @@ export function contributedBlockTypes() {
   return viewModules().flatMap((m) => Object.keys(m.blocks || {}))
 }
 
-for (const mod of [profile, actions, social, gallery, menu, listings, availability]) registerView(mod)
+for (const mod of [profile, actions, social, gallery, menu, listings, availability, profileEditor, mediaManager, menuEditor, listingManager, availabilityCalendar]) registerView(mod)

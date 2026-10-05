@@ -1,0 +1,14 @@
+/* Admin template: media-manager — tokens --ng-media-manager-* (on the shared gallery block when it carries actions) */
+.ng-blocks {
+  --ng-media-manager-gap: var(--ng-gallery-gap);
+  --ng-media-manager-min: 9rem;
+  --ng-media-manager-ratio: var(--ng-gallery-ratio);
+  --ng-media-manager-radius: var(--ng-gallery-radius);
+  --ng-media-manager-cover-outline: 2px solid var(--ng-accent);
+  --ng-media-manager-actions-gap: 0.25rem;
+}
+.ng-gallery:has(.ng-item-actions) { gap: var(--ng-media-manager-gap); grid-template-columns: repeat(auto-fill, minmax(var(--ng-media-manager-min), 1fr)); }
+.ng-gallery:has(.ng-item-actions) img { aspect-ratio: var(--ng-media-manager-ratio); border-radius: var(--ng-media-manager-radius); }
+.ng-gallery:has(.ng-item-actions) .ng-gallery-item--cover { grid-column: auto; }
+.ng-gallery:has(.ng-item-actions) .ng-gallery-item--cover img { outline: var(--ng-media-manager-cover-outline); outline-offset: 2px; }
+.ng-gallery:has(.ng-item-actions) .ng-item-actions { gap: var(--ng-media-manager-actions-gap); }

@@ -203,14 +203,15 @@ export declare class AdapterError extends Error {
   readonly notConnected: boolean
   readonly forbidden: boolean
 }
-export declare const DEFAULT_ROUTES: Readonly<Record<'businessSection' | 'businessRow' | 'appTable' | 'appRow' | 'install' | 'installSettings' | 'publicApp' | 'publicSubmit', string>>
+export declare const DEFAULT_ROUTES: Readonly<Record<'businessContract' | 'businessContractRow' | 'businessSection' | 'businessRow' | 'appTable' | 'appRow' | 'install' | 'installSettings' | 'publicApp' | 'publicSubmit', string>>
 export declare const EXISTING_ROUTES: readonly string[]
 
-export interface LoadResult { settings: Record<string, unknown>; granted?: string[]; data: Rows; errors: Record<string, AdapterError>; installError?: AdapterError | null; manifest?: Manifest }
+export interface LoadResult { settings: Record<string, unknown>; granted?: string[]; data: Rows; /** values of format bindings, by binding key */ business: Record<string, string>; errors: Record<string, AdapterError>; installError?: AdapterError | null; manifest?: Manifest }
 export interface OwnerAdapter {
   routes: Record<string, string>
   install(): Promise<{ installId: string; itemKey?: string; version?: string; settings?: Record<string, unknown>; granted?: string[] }>
   list(manifest: Manifest, source: string): Promise<Record<string, unknown>[]>
+  businessValue(manifest: Manifest, binding: string): Promise<unknown>
   load(manifest: Manifest, which?: string): Promise<LoadResult>
   /** `data`: rows already loaded (optionsFrom sources are read when absent). */
   create(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { rows?: Record<string, unknown>[]; data?: Rows }): Promise<Record<string, unknown>>
@@ -221,7 +222,7 @@ export interface OwnerAdapter {
 }
 export interface PublicAdapter {
   routes: Record<string, string>
-  load(): Promise<LoadResult>
+  load(manifest?: Manifest): Promise<LoadResult>
   submit(manifest: Manifest, source: string, values: Record<string, unknown>, options?: { data?: Rows }): Promise<Record<string, unknown>>
 }
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>

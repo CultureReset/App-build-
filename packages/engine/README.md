@@ -159,11 +159,12 @@ const { settings, granted, data, errors } = await adapter.load(manifest, 'owner'
 
 | Route (under gcr-api-clean `/api`) | Used for | Exists |
 | --- | --- | --- |
-| `GET/POST /business/:section`, `PATCH/DELETE /business/:section/:id` | business sources | yes (`routes/business-data.js`, permissions per CONTRACT §6) |
+| `GET/POST /business/:contract`, `PATCH/DELETE /business/:contract/:id` | business sources bound through `bindings` (the dotted contract name, e.g. `faqs.items`; `business.currency` for a format binding) | yes (`routes/business-data.js` resolves it through `lib/dataContracts.js`) |
+| `GET/POST /business/:section`, `PATCH/DELETE /business/:section/:id` | business sources in the older section form | yes (`routes/business-data.js`, permissions per CONTRACT §6) |
 | `GET/POST /app-data/:table`, `PATCH/DELETE /app-data/:table/:id` | the app's own records, scoped by the install token's `install_id` | yes (`routes/app-data.js`) |
 | `GET /app-install` → `{ installId, itemKey, version, settings, granted }` | the install behind the token | yes |
 | `PUT /app-install/settings` `{ settings }` → `{ settings }` | saving settings (only `configKeys`) | yes |
-| `GET /public/apps/:installId` → `{ settings, data }` | what a visitor may read (public views' sources only) | yes |
+| `GET /public/apps/:installId` → `{ settings, data, business? }` | what a visitor may read (public views' sources only, bound sources resolved by gcr-api-clean; `business` carries format-binding values by key) | yes |
 | `POST /public/apps/:installId/:table` | a visitor's form, into a table declared public `append` | yes |
 
 Routes can be overridden (`routes: { … }`) if gcr-api-clean names them differently. A missing route

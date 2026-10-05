@@ -162,3 +162,78 @@ test('update is a PATCH: only the fields in the payload are checked and sent, no
   await adapter.update(sampleManifest(), 'notes', 'n1', { body: '' })
   assert.deepEqual(fetch.calls[1].body, { body: null })
 })
+
+/* ── bindings: business sources resolved through data contracts (DECISIONS #45) ── */
+
+function boundManifest() {
+  const m = sampleManifest()
+  m.permissions = [
+    { id: 'things:read', reason: 'Shows the business things.' },
+    { id: 'things:write', reason: 'Edits the business things.', optional: true },
+    { id: 'business:read', reason: 'Reads the FAQs and the currency.' },
+    { id: 'business:write', reason: 'Edits the FAQs.' },
+  ]
+  m.bindings = {
+    faqs: { contract: 'faqs.items', access: 'read-write', fieldMap: { name: 'question' } },
+    currency: { contract: 'business.currency', access: 'read' },
+  }
+  m.ui.format = { currency: { binding: 'currency' } }
+  m.ui.sources.groups = { from: 'business', binding: 'faqs', label: 'FAQs', labelSingular: 'FAQ', fields: [{ key: 'name', label: 'Question', type: 'text', required: true }], title: 'name' }
+  return m
+}
+
+test('a bound source is read and written at /business/<contract>, with its fieldMap applied both ways', async () => {
+  const fetch = fakeFetch(({ url, method, body }) => {
+    if (url.endsWith('/app-install')) return { body: { installId: 'i1', settings: {}, granted: ['things:read', 'business:read', 'business:write'] } }
+    if (url.includes('/business/faqs.items')) return method === 'GET' ? { body: { rows: [{ id: 'f1', question: 'Why?', answer: 'Because.' }] } } : { status: 201, body: { row: { id: 'f2', ...body } } }
+    if (url.endsWith('/business/business.currency')) return { body: { value: 'GBP' } }
+    if (url.includes('/business/thing')) return { body: { rows: [] } }
+    if (url.includes('/app-data/')) return { body: { rows: [] } }
+    return { status: 404, body: '<html>' }
+  })
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const loaded = await adapter.load(boundManifest(), 'owner')
+  assert.deepEqual(loaded.data.groups, [{ id: 'f1', name: 'Why?', answer: 'Because.' }], 'columns come back under the field keys the manifest uses')
+  assert.deepEqual(loaded.business, { currency: 'GBP' }, 'format bindings are read from the business')
+  assert.ok(fetch.calls.some((c) => c.url === '/biz/business/faqs.items' && c.method === 'GET'))
+  assert.ok(!fetch.calls.some((c) => c.url.includes('/business/faqs/') || c.url.endsWith('/business/faqs')), 'never the raw table name')
+  const row = await adapter.create(boundManifest(), 'groups', { name: 'How?' })
+  const sent = fetch.calls.find((c) => c.method === 'POST')
+  assert.equal(sent.url, '/biz/business/faqs.items')
+  assert.deepEqual(sent.body, { question: 'How?' }, 'the field is written under its column name')
+  assert.equal(row.name, 'How?')
+  await adapter.update(boundManifest(), 'groups', 'f1', { name: 'When?' })
+  const patched = fetch.calls.find((c) => c.method === 'PATCH')
+  assert.equal(patched.url, '/biz/business/faqs.items/f1')
+  assert.deepEqual(patched.body, { question: 'When?' })
+  await adapter.remove(boundManifest(), 'groups', 'f1')
+  assert.equal(fetch.calls.at(-1).url, '/biz/business/faqs.items/f1')
+})
+
+test('a format binding that cannot be read is reported, not fatal; rows[0] of a contract also serve as its value', async () => {
+  const fetch = fakeFetch(({ url }) => {
+    if (url.endsWith('/business/business.currency')) return { status: 403, body: { error: 'business:read not granted' } }
+    if (url.includes('/business/')) return { body: { rows: [] } }
+    if (url.includes('/app-data/')) return { body: { rows: [] } }
+    return { body: { installId: 'i1', settings: {} } }
+  })
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const loaded = await adapter.load(boundManifest(), 'public')
+  assert.deepEqual(loaded.business, {})
+  assert.equal(loaded.errors.currency.forbidden, true)
+  const rowy = fakeFetch(({ url }) => (url.endsWith('/business/business.currency') ? { body: { rows: [{ currency: 'EUR' }] } } : url.includes('/app-install') ? { body: {} } : { body: { rows: [] } }))
+  const second = await createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch: rowy }).load(boundManifest(), 'owner')
+  assert.deepEqual(second.business, { currency: 'EUR' })
+})
+
+test('the public adapter carries the business values and maps bound rows to field keys', async () => {
+  const fetch = fakeFetch(() => ({ body: { settings: {}, data: { groups: [{ id: 'f1', question: 'Why?' }], notes: [] }, business: { currency: 'USD' } } }))
+  const pub = createPublicAdapter({ baseUrl: '/api', installId: 'i1', fetch })
+  const loaded = await pub.load(boundManifest())
+  assert.deepEqual(loaded.business, { currency: 'USD' })
+  assert.deepEqual(loaded.data.groups, [{ id: 'f1', name: 'Why?' }])
+  // Without a manifest the body is passed through as before.
+  const plain = await pub.load()
+  assert.deepEqual(plain.data.groups, [{ id: 'f1', question: 'Why?' }])
+  assert.deepEqual(plain.business, { currency: 'USD' })
+})

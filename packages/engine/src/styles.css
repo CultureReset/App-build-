@@ -119,6 +119,8 @@
 .ng-form--feature { padding: 1rem; border: 1px solid var(--ng-border); border-radius: var(--ng-radius); }
 .ng-field { display: grid; gap: 0.25rem; }
 .ng-field-label { font-weight: 500; }
+.ng-field-upload { font-size: 0.875rem; }
+.ng-field-file { font-size: 0.75rem; color: var(--ng-muted); }
 .ng-field input:not([type='checkbox']), .ng-field select, .ng-field textarea { font: inherit; padding: 0.5rem; border: 1px solid var(--ng-border); border-radius: var(--ng-radius); background: transparent; color: inherit; }
 .ng-form-actions { display: flex; gap: 0.5rem; }
 .ng-details details { padding: 0.6rem 0; border-bottom: 1px solid var(--ng-border); }

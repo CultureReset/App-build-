@@ -254,3 +254,68 @@ test('a visitor may submit into a read-write bound source; the install resolves 
   ro.bindings.faqs.access = 'read'
   await assert.rejects(pub.submit(ro, 'groups', { name: 'x' }), /not open to visitors/)
 })
+
+/* ── an image file, into the business's storage (gcr-api-clean POST /api/business/media/upload, DECISIONS #99) ── */
+
+/** A fetch stub that keeps a multipart body as it is (fakeFetch above parses JSON). */
+function formFetch(handler) {
+  const calls = []
+  const fn = async (url, init) => {
+    const call = { url, method: init.method, headers: init.headers, body: init.body }
+    calls.push(call)
+    const { status = 200, body } = (await handler(call)) || {}
+    return new Response(body === undefined ? null : JSON.stringify(body), { status })
+  }
+  fn.calls = calls
+  return fn
+}
+
+const png = () => new File([new Uint8Array([137, 80, 78, 71])], 'photo.png', { type: 'image/png' })
+
+test('uploadImage posts the file as multipart `file` with the install token and returns { url, image_path }', async () => {
+  const fetch = formFetch(() => ({ body: { url: 'https://cdn.example.test/biz/1-ab.png', image_path: 'biz/1-ab.png' } }))
+  const adapter = createGcrAdapter({ baseUrl: 'https://gcr.example.test/api/', getToken: token, fetch })
+  const out = await adapter.uploadImage(png())
+  assert.deepEqual(out, { url: 'https://cdn.example.test/biz/1-ab.png', image_path: 'biz/1-ab.png' })
+  const [call] = fetch.calls
+  assert.equal(call.url, 'https://gcr.example.test/api/business/media/upload')
+  assert.equal(call.method, 'POST')
+  assert.equal(call.headers.Authorization, 'Bearer install-token')
+  assert.equal(call.headers['Content-Type'], undefined, 'the browser sets the multipart boundary')
+  assert.ok(call.body instanceof FormData)
+  const sent = call.body.get('file')
+  assert.ok(sent instanceof Blob)
+  assert.equal(sent.type, 'image/png')
+  assert.equal(sent.name, 'photo.png')
+  assert.deepEqual([...call.body.keys()], ['file'], 'nothing else rides along — the business is the token\'s')
+})
+
+test('uploadImage refuses anything but an image before sending, and surfaces the server\'s refusals', async () => {
+  const fetch = formFetch(() => ({ status: 413, body: { error: 'The file is over 1000 bytes.' } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  await assert.rejects(adapter.uploadImage(new File(['x'], 'notes.txt', { type: 'text/plain' })), (err) => err instanceof AdapterError && err.status === 400 && /image/.test(err.message))
+  await assert.rejects(adapter.uploadImage('https://not.a/file'), (err) => err instanceof AdapterError && err.status === 400)
+  assert.equal(fetch.calls.length, 0)
+  await assert.rejects(adapter.uploadImage(png()), (err) => err instanceof AdapterError && err.status === 413 && err.message === 'The file is over 1000 bytes.')
+  const forbidden = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch: formFetch(() => ({ status: 403, body: { error: 'This connection is not allowed to upload media.' } })) })
+  await assert.rejects(forbidden.uploadImage(png()), (err) => err.forbidden)
+})
+
+test('uploadValues: a File in an image field is uploaded and replaced by its url; links are left as typed', async () => {
+  const fetch = formFetch(() => ({ body: { url: 'https://cdn.example.test/p.png', image_path: 'p.png' } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const values = await adapter.uploadValues(sampleManifest(), 'notes', { title: 'Hi', picture: png(), link: 'https://a.example.test' })
+  assert.deepEqual(values, { title: 'Hi', picture: 'https://cdn.example.test/p.png', link: 'https://a.example.test' })
+  assert.equal(fetch.calls.length, 1)
+  const typed = await adapter.uploadValues(sampleManifest(), 'notes', { picture: 'https://img.example.test/1.png' })
+  assert.deepEqual(typed, { picture: 'https://img.example.test/1.png' }, 'the URL field still works')
+  assert.equal(fetch.calls.length, 1)
+  // A file in a field that is not an image field is not uploaded, so nothing but pictures reach storage.
+  await assert.rejects(adapter.uploadValues(sampleManifest(), 'notes', { title: png() }), (err) => err.status === 422 && Boolean(err.errors.title))
+})
+
+test('the public adapter cannot upload: no token, no storage', () => {
+  const pub = createPublicAdapter({ baseUrl: '/api', installId: 'i1', fetch: formFetch(() => ({})) })
+  assert.equal(pub.uploadImage, undefined)
+  assert.equal(pub.uploadValues, undefined)
+})

@@ -49,3 +49,14 @@ test('EngineApp starts in a loading state and asks the adapter for data', () => 
   // Effects do not run in a server render; the adapter is called once mounted.
   assert.equal(asked, null)
 })
+
+test('an image field offers a file input only where the screen can upload (EngineApp with an adapter that has uploadImage)', () => {
+  const form = { type: 'form', id: 'photos:new', fields: [{ key: 'url', label: 'Image', type: 'image' }], values: {}, submit: { label: 'Add', action: { type: 'record.create', source: 'photos' } } }
+  const plain = renderToStaticMarkup(h(Blocks, { blocks: [form] }))
+  assert.ok(plain.includes('type="url"'))
+  assert.ok(!plain.includes('type="file"'), 'a bare block tree has nowhere to send a file')
+  const withUpload = renderToStaticMarkup(h(Blocks, { blocks: [form], upload: true }))
+  assert.ok(withUpload.includes('type="url"'), 'the link still works')
+  assert.ok(withUpload.includes('type="file"') && withUpload.includes('accept="image/*"'), withUpload)
+  assert.ok(withUpload.includes('ng-field-upload'))
+})

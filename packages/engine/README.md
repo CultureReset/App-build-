@@ -102,7 +102,7 @@ CSS custom properties (`--ng-<name>-*`, listed in `module.tokens` and `views/<na
 | `listings` | public | title, image, kind, badges (a `tags` field), price, unit, capacity, description, link | grid, list | a `nav` filter over the kinds present, a section per kind, `list` style `listings` / `listings-rows`, each card opening a detail |
 | `availability` | public | **date** (a date field), end (date), time (time), status, capacity, title, link | list, month, week | a `calendar` block over the claims |
 | `profile-editor` | owner | — (every field of the single row) | — | one form (`record.update`, or `record.create` when there is no row); read-only values without write access |
-| `media-manager` | owner | **image**, caption, cover (boolean) | — | add, a `gallery` with move up/down, make cover (a quick `record.update`), edit, delete |
+| `media-manager` | owner | **image**, caption, cover (boolean) | — | add (a link, or a file where the screen can upload), a `gallery` with move up/down, make cover (a quick `record.update`), edit, delete |
 | `menu-editor` | owner | title, price, available (boolean), image, description, badges | — | sections (the group source) with move/edit/delete, items with move, sold-out toggle, inline price form, edit, delete; add for both |
 | `listing-manager` | owner | title, image, kind, badges, price, unit, capacity, description | — | a kind filter, cards with move, show/hide (the source's `visibleWhen`), edit, delete |
 | `availability-calendar` | owner | **date**, end, time, status, capacity, title | month, week, list | a `calendar` with add on every day (the form opens with that date) and edit/delete on every claim |
@@ -206,6 +206,7 @@ const { settings, granted, data, errors } = await adapter.load(manifest, 'owner'
 | --- | --- | --- |
 | `GET/POST /business/:contract`, `PATCH/DELETE /business/:contract/:id` | business sources bound through `bindings` (the dotted contract name, e.g. `faqs.items`; `business.currency` for a format binding) | yes (`routes/business-data.js` resolves it through `lib/dataContracts.js`) |
 | `GET/POST /business/:section`, `PATCH/DELETE /business/:section/:id` | business sources in the older section form | yes (`routes/business-data.js`, permissions per CONTRACT §6) |
+| `POST /business/media/upload` (multipart `file`, an image) → `{ url, image_path }` | `adapter.uploadImage(file)`; `EngineApp` uploads a file picked into an image field before the write and sends the url (`uploadValues`) | yes (`routes/business-data.js`, needs `business:write`) |
 | `GET/POST /app-data/:table`, `PATCH/DELETE /app-data/:table/:id` | the app's own records, scoped by the install token's `install_id` | yes (`routes/app-data.js`) |
 | `GET /app-install` → `{ installId, itemKey, version, settings, granted }` | the install behind the token | yes |
 | `PUT /app-install/settings` `{ settings }` → `{ settings }` | saving settings (only `configKeys`) | yes |

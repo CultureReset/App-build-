@@ -1,6 +1,7 @@
 // Admin template: media-manager — the photos as a grid the owner reorders,
-// captions, marks as cover and removes. "Upload" is a link to an image today
-// (the image field); connecting storage is the platform's, not the engine's.
+// captions, marks as cover and removes. "Add" is the image field: a link, or
+// a file where the screen can upload (EngineApp with an owner adapter sends
+// it to gcr-api-clean's /business/media/upload and writes the url it gets).
 
 import { editorBlocks, editDeleteButtons, imageSlot, isOn, moveButtons, rawValue, rowId, slot } from '../view-helpers.js'
 import { fill } from '../copy.js'

@@ -255,7 +255,7 @@ export declare class AdapterError extends Error {
   readonly notConnected: boolean
   readonly forbidden: boolean
 }
-export declare const DEFAULT_ROUTES: Readonly<Record<'businessContract' | 'businessContractRow' | 'businessSection' | 'businessRow' | 'appTable' | 'appRow' | 'install' | 'installSettings' | 'publicApp' | 'publicSubmit', string>>
+export declare const DEFAULT_ROUTES: Readonly<Record<'businessContract' | 'businessContractRow' | 'businessSection' | 'businessRow' | 'mediaUpload' | 'appTable' | 'appRow' | 'install' | 'installSettings' | 'publicApp' | 'publicSubmit', string>>
 export declare const EXISTING_ROUTES: readonly string[]
 
 export interface LoadResult { settings: Record<string, unknown>; granted?: string[]; data: Rows; /** values of format bindings, by binding key */ business: Record<string, string>; errors: Record<string, AdapterError>; installError?: AdapterError | null; manifest?: Manifest }
@@ -271,6 +271,10 @@ export interface OwnerAdapter {
   remove(manifest: Manifest, source: string, id: string): Promise<true>
   move(manifest: Manifest, source: string, rows: Record<string, unknown>[], id: string, direction: 'up' | 'down'): Promise<boolean>
   saveSettings(manifest: Manifest, values: Record<string, unknown>): Promise<Record<string, unknown>>
+  /** An image file into the business's storage (POST /business/media/upload, multipart `file`, needs business:write). */
+  uploadImage(file: Blob): Promise<{ url: string; image_path: string | null }>
+  /** Form values with every File in an image field uploaded and replaced by its url. */
+  uploadValues(manifest: Manifest, source: string, values: Record<string, unknown>): Promise<Record<string, unknown>>
 }
 export interface PublicAdapter {
   routes: Record<string, string>

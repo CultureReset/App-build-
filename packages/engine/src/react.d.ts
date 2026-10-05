@@ -7,6 +7,8 @@ export declare function Blocks(props: {
   busy?: boolean
   prefix?: string
   className?: string
+  /** image fields also take a file; the screen's onAction uploads it (OwnerAdapter.uploadValues) */
+  upload?: boolean
 }): ReactElement
 
 export declare function EngineApp(props: {

@@ -13,7 +13,7 @@
 // Class names are `${prefix}-<type>` (prefix defaults to "ng"); each screen
 // styles them in its own way. src/styles.css is an optional starting point.
 
-import { createElement as h, Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { createElement as h, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { renderOwner, renderPublic, renderSurface, checkRecord } from './render.js'
 import { KEY } from './blocks.js'
 import { contributedBlock } from './views/index.js'
@@ -21,6 +21,9 @@ import { slug } from './view-helpers.js'
 
 const keyClass = (p, name, key) => (typeof key === 'string' && KEY.test(key) ? ` ${p}-${name}-${slug(key)}` : '')
 const anchorId = (p, id) => `${p}-${slug(id)}`
+
+/** True where the screen can take a file for an image field (EngineApp with an adapter that uploads). */
+const UploadContext = createContext(false)
 
 const INPUT = { email: 'email', phone: 'tel', number: 'number', money: 'number', date: 'date', time: 'time', url: 'url', image: 'url', color: 'color', secret: 'password' }
 
@@ -55,9 +58,12 @@ function Button({ b, p, onAction, busy }) {
 }
 
 function Field({ f, value, error, onChange, p, formId, disabled }) {
+  const upload = useContext(UploadContext)
   const id = `${p}-${formId}-${f.key}`.replace(/[^A-Za-z0-9_-]/g, '-')
+  // A picked file sits in the value until the write uploads it (adapter.uploadValues).
+  const file = typeof Blob === 'function' && value instanceof Blob ? value : null
   // A tags list is edited as comma text (values.js tagList reads it back).
-  const shown = value === undefined || value === null ? '' : f.type === 'tags' && Array.isArray(value) ? value.join(', ') : String(value)
+  const shown = value === undefined || value === null || file ? '' : f.type === 'tags' && Array.isArray(value) ? value.join(', ') : String(value)
   const common = { id, name: f.key, required: Boolean(f.required), disabled }
   let control
   if (f.type === 'longtext') {
@@ -86,11 +92,17 @@ function Field({ f, value, error, onChange, p, formId, disabled }) {
       onChange: (e) => onChange(numeric && e.target.value !== '' ? Number(e.target.value) : e.target.value),
     })
   }
+  // An image field takes a link, or — where the screen can upload — a file as well.
+  const picker = f.type === 'image' && upload
+    ? h('input', { type: 'file', accept: 'image/*', className: `${p}-field-upload`, disabled, 'aria-label': f.label, onChange: (e) => onChange(e.target.files?.[0] || '') })
+    : null
   return h(
     'label',
     { className: `${p}-field ${p}-field--${f.type}`, htmlFor: id },
     h('span', { className: `${p}-field-label` }, f.label),
     control,
+    picker,
+    file ? h('span', { className: `${p}-field-file` }, file.name || '') : null,
     f.help ? h('span', { className: `${p}-help` }, f.help) : null,
     error ? h('span', { className: `${p}-error`, role: 'alert' }, error) : null,
   )
@@ -359,9 +371,9 @@ function BlockList({ blocks, p, onAction, busy, depth }) {
   )
 }
 
-/** Draw a block tree. */
-export function Blocks({ blocks, onAction, busy = false, prefix = 'ng', className }) {
-  return h('div', { className: className || `${prefix}-blocks` }, h(BlockList, { blocks, p: prefix, onAction, busy, depth: 0 }))
+/** Draw a block tree. `upload`: image fields also take a file (the screen's onAction uploads it). */
+export function Blocks({ blocks, onAction, busy = false, prefix = 'ng', className, upload = false }) {
+  return h(UploadContext.Provider, { value: Boolean(upload) }, h('div', { className: className || `${prefix}-blocks` }, h(BlockList, { blocks, p: prefix, onAction, busy, depth: 0 })))
 }
 
 /**
@@ -380,6 +392,8 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
   const [state, setState] = useState({ loading: true, settings: {}, granted: undefined, data: {}, business: {}, loadError: null })
   const [ui, setUi] = useState({ editing: null, values: {}, errors: {}, submitted: {} })
   const [busy, setBusy] = useState(false)
+  // An owner adapter uploads (gcr-api-clean /business/media/upload); the public one has no door to storage.
+  const upload = typeof adapter?.uploadImage === 'function'
 
   const load = useCallback(async () => {
     try {
@@ -442,7 +456,8 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
           // its own values and is partial: only those fields are checked and sent.
           const quick = values === undefined && action.values ? action.values : null
           const inline = Boolean(block && block.type === 'form' && action.type === 'record.update' && block.fields?.length && block.fields.length < 2)
-          const payload = quick || values
+          // A file picked into an image field goes to storage first; the write carries its url.
+          const payload = quick || (upload && values ? await adapter.uploadValues(manifest, action.source, values) : values)
           const partial = Boolean(quick || inline)
           const checked = checkRecord(manifest, action.source, payload, { data: state.data, partial })
           if (!checked.ok) return fail({ errors: checked.errors })
@@ -477,10 +492,10 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
         setBusy(false)
       }
     },
-    [adapter, manifest, state.data, load, onError],
+    [adapter, manifest, state.data, load, onError, upload],
   )
 
   if (state.loading) return h('div', { className: `${prefix}-blocks ${prefix}-loading`, 'aria-busy': true })
   if (state.loadError) return h(Blocks, { prefix, blocks: [{ type: 'notice', tone: 'danger', text: state.loadError.message || String(state.loadError) }] })
-  return h(Blocks, { blocks, onAction, busy, prefix })
+  return h(Blocks, { blocks, onAction, busy, prefix, upload })
 }

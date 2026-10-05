@@ -30,6 +30,8 @@ export const DEFAULT_ROUTES = Object.freeze({
   // … or a section (the raw table), the older form.
   businessSection: '/business/{section}',
   businessRow: '/business/{section}/{id}',
+  // An image file into the business's storage (multipart `file`, needs business:write): { url, image_path } (DECISIONS #99).
+  mediaUpload: '/business/media/upload',
   // gcr-api-clean routes/app-data.js: the per-app data space, scoped by the install token.
   appTable: '/app-data/{table}',
   appRow: '/app-data/{table}/{id}',
@@ -89,7 +91,8 @@ function client({ baseUrl, getToken, fetch: fetchImpl, timeoutMs }) {
   if (typeof doFetch !== 'function') throw new Error('No fetch available; pass one in.')
   const base = String(baseUrl ?? '').replace(/\/+$/, '')
 
-  return async function request(method, path, { body, query } = {}) {
+  // `form` is a FormData body: sent as it is, the browser writing the multipart boundary.
+  return async function request(method, path, { body, query, form } = {}) {
     const qs = query ? new URLSearchParams(Object.entries(query).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])).toString() : ''
     const url = `${base}${path}${qs ? `?${qs}` : ''}`
     const send = async (force) => {
@@ -102,7 +105,7 @@ function client({ baseUrl, getToken, fetch: fetchImpl, timeoutMs }) {
       const controller = typeof AbortController === 'function' ? new AbortController() : null
       const timer = controller && timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null
       try {
-        return await doFetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: controller?.signal })
+        return await doFetch(url, { method, headers, body: form !== undefined ? form : body === undefined ? undefined : JSON.stringify(body), signal: controller?.signal })
       } finally {
         if (timer) clearTimeout(timer)
       }
@@ -230,6 +233,7 @@ export function createGcrAdapter(config) {
     return fill(id === undefined ? routes.businessSection : routes.businessRow, { section: source.section, id })
   }
   const contractPath = (contract) => fill(routes.businessContract, { contract })
+  const isFile = (v) => typeof Blob === 'function' && v instanceof Blob
 
   const adapter = {
     routes,
@@ -341,6 +345,44 @@ export function createGcrAdapter(config) {
       await request('PATCH', pathFor(manifest, source, mine.id), { body: valuesToColumns(binding, { [source.order]: newMine }) })
       await request('PATCH', pathFor(manifest, source, other.id), { body: valuesToColumns(binding, { [source.order]: newOther }) })
       return true
+    },
+
+    /**
+     * An image file into the business's storage: POST multipart `file` with
+     * the install token; gcr-api-clean puts it under the token's business and
+     * answers { url, image_path }. No record is made here — the app then
+     * writes the url into its source like any other field.
+     */
+    async uploadImage(file) {
+      if (!isFile(file)) throw new AdapterError('Send one image file.', { status: 400, path: routes.mediaUpload })
+      if (!/^image\//.test(file.type || '')) throw new AdapterError('Only an image can be uploaded here.', { status: 400, path: routes.mediaUpload })
+      const form = new FormData()
+      form.append('file', file, file.name || 'image')
+      const out = await request('POST', routes.mediaUpload, { form })
+      if (!isObj(out) || typeof out.url !== 'string') throw new AdapterError('The upload did not come back with a url.', { status: 502, body: out, path: routes.mediaUpload })
+      return { url: out.url, image_path: typeof out.image_path === 'string' ? out.image_path : null }
+    },
+
+    /**
+     * Form values with every File in an image field uploaded and replaced by
+     * its url, so a write carries links only. A typed link is left as it is;
+     * a file in any other field is refused by name.
+     */
+    async uploadValues(manifest, key, values) {
+      const source = sourceOf(manifest, key)
+      const out = { ...(values || {}) }
+      const errors = {}
+      for (const [k, v] of Object.entries(out)) {
+        if (!isFile(v)) continue
+        const field = (source.fields || []).find((f) => f.key === k)
+        if (!field || field.type !== 'image') {
+          errors[k] = `${field?.label || k} cannot take a file.`
+          continue
+        }
+        out[k] = (await adapter.uploadImage(v)).url
+      }
+      if (Object.keys(errors).length) throw new AdapterError('Some fields need attention.', { status: 422, errors })
+      return out
     },
 
     /** Saves only the keys the manifest declares (the store's configKeys rule). */

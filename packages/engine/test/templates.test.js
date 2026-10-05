@@ -17,7 +17,6 @@ const json = (x) => JSON.stringify(x)
 const errorsOf = (m) => validateManifest(m).errors.map((e) => `${e.path} ${e.message}`)
 const has = (m, needle) => errorsOf(m).some((e) => e.includes(needle))
 const PUBLIC = ['profile', 'actions', 'social', 'gallery', 'menu', 'listings', 'availability']
-const ADMIN = ['profile-editor', 'media-manager', 'menu-editor', 'listing-manager', 'availability-calendar']
 
 test('the template view types exist, public ones for visitors, admin ones owner-only', () => {
   for (const t of PUBLIC) assert.ok(VIEW_TYPES[t], t)

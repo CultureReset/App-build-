@@ -86,6 +86,17 @@ export const CONTRACTS = Object.freeze([
   'business.links', 'business.profile', 'business.currency',
 ])
 
+/**
+ * Contracts that are one record per business (gcr-api-clean lib/dataContracts.js
+ * `single`, DECISIONS #96): read and PATCHed without an id, never POSTed or
+ * DELETEd. Mirrors the registry, as CONTRACTS does.
+ */
+export const SINGLE_CONTRACTS = Object.freeze(['business.profile'])
+
+export function isSingleContract(contract) {
+  return isStr(contract) && SINGLE_CONTRACTS.includes(contract)
+}
+
 /** The resource a contract's permission names, or null when its family is unknown. */
 export function resourceForContract(contract) {
   if (!isStr(contract)) return null

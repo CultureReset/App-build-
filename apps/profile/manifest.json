@@ -3,7 +3,7 @@
   "id": "core-profile",
   "name": "Profile",
   "summary": "Who you are, in one block at the top of your page.",
-  "description": "The business profile the business already keeps — name, tagline, about, address, logo and cover — as the header of the public page, with the ways to get in touch. Edited under Business; this app shows it.",
+  "description": "The business profile the business already keeps — name, tagline, about, address, logo and cover — as the header of the public page, with the ways to get in touch. The owner edits it here, in place.",
   "version": "1.0.0",
   "publisher": "core",
   "icon": "🪪",
@@ -40,12 +40,16 @@
     {
       "id": "business:read",
       "reason": "Shows the business profile: name, tagline, about, address, logo, cover and contact details."
+    },
+    {
+      "id": "business:write",
+      "reason": "Lets you edit the business profile here, in place: the same record the public page shows."
     }
   ],
   "bindings": {
     "profile": {
       "contract": "business.profile",
-      "access": "read"
+      "access": "read-write"
     }
   },
   "pricing": {
@@ -83,6 +87,13 @@
             "label": "Address",
             "type": "text",
             "maxLength": 160
+          },
+          {
+            "key": "address_display",
+            "label": "Address as shown",
+            "type": "text",
+            "readOnly": true,
+            "help": "The address on one line, as the page shows it."
           },
           {
             "key": "logo_url",
@@ -127,7 +138,10 @@
       "owner": [
         {
           "type": "profile-editor",
-          "source": "business_profile"
+          "source": "business_profile",
+          "fields": {
+            "location": "address_display"
+          }
         }
       ],
       "public": [
@@ -139,7 +153,7 @@
             "name": "name",
             "tagline": "subtitle",
             "description": "description",
-            "location": "address_line_1",
+            "location": "address_display",
             "image": "logo_url",
             "cover": "hero_image_url",
             "phone": "phone",

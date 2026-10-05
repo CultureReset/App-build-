@@ -170,6 +170,7 @@ export function templatesManifest(overrides = {}) {
             { key: 'subtitle', label: 'Tagline', type: 'text' },
             { key: 'description', label: 'About', type: 'longtext' },
             { key: 'address', label: 'Address', type: 'text' },
+            { key: 'address_display', label: 'Address shown', type: 'text', readOnly: true },
             { key: 'logo_url', label: 'Logo', type: 'image' },
             { key: 'hero_image_url', label: 'Cover', type: 'image' },
             { key: 'phone', label: 'Phone', type: 'phone' },
@@ -239,7 +240,7 @@ export function templatesManifest(overrides = {}) {
         // Only the admin templates that are registered (the public group can ship
         // alone; with none, a core collection keeps the owner view set non-empty).
         owner: ownerViews([
-          { type: 'profile-editor', source: 'place' },
+          { type: 'profile-editor', source: 'place', fields: { location: 'address_display' } },
           { type: 'media-manager', source: 'photos', fields: { image: 'url', caption: 'caption', cover: 'is_cover' } },
           { type: 'menu-editor', source: 'dishes', fields: { title: 'item_name', price: 'price', available: 'is_available', image: 'image_url', description: 'description', badges: 'tags' } },
           { type: 'listing-manager', source: 'catalogue', fields: { title: 'name', image: 'image_url', kind: 'kind', price: 'price_from', unit: 'unit', capacity: 'capacity', description: 'description' } },
@@ -263,7 +264,7 @@ export function templatesManifest(overrides = {}) {
 export function templatesData() {
   return {
     place: [{
-      id: 'b1', name: 'Place 1', subtitle: 'Tagline 1', description: '<b>Place 1</b> is a place.', address: 'Street 1', logo_url: 'https://img.example.test/logo.png',
+      id: 'b1', name: 'Place 1', subtitle: 'Tagline 1', description: '<b>Place 1</b> is a place.', address: 'Street 1', address_display: 'Street 1, Town 1', logo_url: 'https://img.example.test/logo.png',
       hero_image_url: 'https://img.example.test/hero.png', phone: '+1 555 0101', email: 'hello@example.test', website_url: 'https://example.test',
       booking_url: 'https://book.example.test', directions_url: 'https://maps.example.test/x',
     }],

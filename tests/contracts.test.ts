@@ -30,8 +30,9 @@ const COLUMNS: Record<string, { table: string; columns: string[] }> = {
   'menu.items': { table: 'menu_items', columns: ['item_name', 'section_id', 'price', 'description', 'image_url', 'tags', 'is_available', 'sort_order'] },
   'menu.sections': { table: 'menu_sections', columns: ['section_name', 'sort_order'] },
   'business.currency': { table: 'entity', columns: ['currency'] },
-  // The profile columns the profile and actions apps read (schema.sql entity; served read-only by the registry).
-  'business.profile': { table: 'entity', columns: ['name', 'subtitle', 'description', 'address_line_1', 'logo_url', 'hero_image_url', 'phone', 'email', 'website_url', 'booking_url', 'directions_url'] },
+  // The profile columns the profile and actions apps read and the profile app edits (schema.sql entity; a single-record
+  // contract, PATCHed without an id — DECISIONS #96). address_display is derived at read time, never stored (DECISIONS #100).
+  'business.profile': { table: 'entity', columns: ['name', 'subtitle', 'description', 'address_line_1', 'logo_url', 'hero_image_url', 'phone', 'email', 'website_url', 'booking_url', 'directions_url', 'address_display'] },
 }
 
 function schemaColumns(table: string): string[] | null {
@@ -87,6 +88,26 @@ test('gcr-api-clean registry: each contract it serves is served from the table t
 test('gcr-api-clean registry serves every contract the shipped apps bind', { skip: !present && 'no gcr-api-clean checkout beside this repo', todo: true }, () => {
   const missing = contracts.filter((c) => !registry().contractFor(c))
   assert.deepEqual(missing, [], `gcr-api-clean does not serve: ${missing.join(', ')}`)
+})
+
+test('gcr-api-clean registry: business.profile is single and derives address_display, which the apps bind read-only', { skip: !present && 'no gcr-api-clean checkout beside this repo' }, () => {
+  const entry = registry().contractFor('business.profile') as { single?: boolean; derived?: Record<string, unknown> } | null
+  assert.equal(entry?.single, true)
+  assert.ok(entry?.derived && 'address_display' in entry.derived)
+  for (const { dir, key, source, binding } of bound) {
+    if (binding.contract !== 'business.profile') continue
+    for (const f of source.fields) if (f.key === 'address_display') assert.equal(f.readOnly, true, `${dir}.${key}: address_display is derived, so read-only`)
+  }
+})
+
+test('profile edits business.profile in place: a read-write binding with business:write declared and explained', () => {
+  const m = shippedManifests().find((s) => s.dir === 'profile')!.manifest
+  assert.equal(m.bindings!.profile.access, 'read-write')
+  const write = m.permissions!.find((p) => p.id === 'business:write')
+  assert.ok(write && write.reason.length > 10, 'business:write with a reason')
+  const owner = m.ui!.views.owner.find((v) => v.type === 'profile-editor')!
+  assert.equal(owner.fields?.location, 'address_display')
+  assert.equal(m.ui!.views.public.find((v) => v.type === 'profile')!.fields?.location, 'address_display')
 })
 
 test('enquiry-form asks for the contacts resource, not business (DECISIONS #59)', () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createGcrAdapter, createPublicAdapter, AdapterError, DEFAULT_ROUTES, EXISTING_ROUTES } from '../src/index.js'
+import { createGcrAdapter, createPublicAdapter, AdapterError, DEFAULT_ROUTES, EXISTING_ROUTES, SINGLE_CONTRACTS, isSingleContract } from '../src/index.js'
 import { sampleManifest, sampleData } from './fixtures.js'
 
 function fakeFetch(handler) {
@@ -318,4 +318,33 @@ test('the public adapter cannot upload: no token, no storage', () => {
   const pub = createPublicAdapter({ baseUrl: '/api', installId: 'i1', fetch: formFetch(() => ({})) })
   assert.equal(pub.uploadImage, undefined)
   assert.equal(pub.uploadValues, undefined)
+})
+
+/* ── single-record contracts (business.profile: gcr-api-clean DECISIONS #96) ── */
+
+function profileManifest() {
+  const m = boundManifest()
+  m.bindings.place = { contract: 'business.profile', access: 'read-write' }
+  m.ui.sources.place = {
+    from: 'business', binding: 'place', label: 'Place', labelSingular: 'Place',
+    fields: [{ key: 'name', label: 'Name', type: 'text', required: true }, { key: 'address_display', label: 'Address', type: 'text', readOnly: true }],
+    title: 'name',
+  }
+  return m
+}
+
+test('a single-record contract is PATCHed without an id; create and delete are refused here with the server\'s reason', async () => {
+  const fetch = fakeFetch(({ body }) => ({ body: { row: { slug: 'biz', name: 'Place', address_display: '1 Street, Town', ...body } } }))
+  const adapter = createGcrAdapter({ baseUrl: '/biz', getToken: token, fetch })
+  const m = profileManifest()
+  assert.ok(SINGLE_CONTRACTS.includes('business.profile') && isSingleContract('business.profile') && !isSingleContract('faqs.items'))
+  const row = await adapter.update(m, 'place', 'row-0', { name: 'Renamed', address_display: 'typed over' })
+  assert.deepEqual(fetch.calls.map((c) => [c.method, c.url, c.body]), [['PATCH', '/biz/business/business.profile', { name: 'Renamed' }]], 'no id, and the derived field is never written')
+  assert.equal(row.address_display, '1 Street, Town', 'the read carries the derived field')
+  await assert.rejects(adapter.create(m, 'place', { name: 'Second' }), (err) => err instanceof AdapterError && err.status === 405 && err.message === "business.profile is this business's one record: PATCH it.")
+  await assert.rejects(adapter.remove(m, 'place', 'biz'), (err) => err instanceof AdapterError && err.status === 405 && /one record/.test(err.message))
+  assert.equal(fetch.calls.length, 1, 'neither reached the server')
+  // Any other contract still writes by id.
+  await adapter.update(m, 'groups', 'f1', { name: 'When?' })
+  assert.equal(fetch.calls.at(-1).url, '/biz/business/faqs.items/f1')
 })

@@ -46,6 +46,31 @@ test('profile-editor: one form over the single row; read only without write acce
   assert.equal(all(none.find((b) => b.title === 'Place').blocks).find((b) => b.type === 'form').submit.action.type, 'record.create')
 })
 
+test('profile-editor: edits in place, a read-only field (address_display) shown as text where the location slot is bound, never in the form', () => {
+  const m = templatesManifest()
+  const view = m.ui.views.owner.find((v) => v.type === 'profile-editor')
+  assert.deepEqual(view.fields, { location: 'address_display' }, 'the fixture binds the derived address')
+  assert.ok(m.ui.sources.place.fields.some((f) => f.key === 'address_display' && f.readOnly))
+  assert.deepEqual(validateManifest(m).errors, [])
+  const place = renderOwner(m, {}, templatesData()).find((b) => b.title === 'Place')
+  const [text, form] = place.blocks
+  assert.deepEqual(text, { type: 'text', tone: 'muted', text: 'Street 1, Town 1' })
+  assert.equal(form.type, 'form')
+  assert.ok(!form.fields.some((f) => f.key === 'address_display'), 'a derived field is not edited')
+  assert.ok(form.fields.some((f) => f.key === 'address'), 'the stored address is')
+  assert.deepEqual(form.submit.action, { type: 'record.update', source: 'place', id: 'b1' })
+  // Without the slot, nothing but the form.
+  delete view.fields
+  assert.deepEqual(renderOwner(m, {}, templatesData()).find((b) => b.title === 'Place').blocks.map((b) => b.type), ['form'])
+  // Read only (a read binding): the address shows with the other values.
+  view.fields = { location: 'address_display' }
+  const ro = renderOwner(m, {}, templatesData(), { granted: ['business:read'] }).find((b) => b.title === 'Place')
+  assert.ok(ro.blocks.find((b) => b.type === 'details').items.some((it) => it.body === 'Street 1, Town 1'))
+  // The slot must name a field of the source.
+  view.fields = { location: 'nowhere' }
+  assert.ok(has(m, 'unknown field "nowhere"'))
+})
+
 test('media-manager: a gallery with reorder, set-cover, edit and delete on every photo', () => {
   const blocks = renderOwner(templatesManifest(), {}, templatesData())
   const photos = blocks.find((b) => b.title === 'Photos')

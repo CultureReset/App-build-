@@ -21,6 +21,7 @@
 // gcr-api-clean's own /api, or a screen's proxy (Play-user's /biz).
 
 import { checkRecord, sourcesFor } from './render.js'
+import { isSingleContract } from './manifest.js'
 import { configKeys } from './store-rules.js'
 
 export const DEFAULT_ROUTES = Object.freeze({
@@ -233,6 +234,13 @@ export function createGcrAdapter(config) {
     return fill(id === undefined ? routes.businessSection : routes.businessRow, { section: source.section, id })
   }
   const contractPath = (contract) => fill(routes.businessContract, { contract })
+  /** The binding when the source is one record per business (business.profile), else null. */
+  const singleOf = (manifest, source) => {
+    const binding = bindingOf(manifest, source)
+    return binding && isSingleContract(binding.contract) ? binding : null
+  }
+  // gcr-api-clean's own refusal (routes/business-data.js onlyPatch), given here before anything is sent.
+  const onlyPatch = (binding) => new AdapterError(`${binding.contract} is this business's one record: PATCH it.`, { status: 405, path: contractPath(binding.contract) })
   const isFile = (v) => typeof Blob === 'function' && v instanceof Blob
 
   const adapter = {
@@ -303,6 +311,8 @@ export function createGcrAdapter(config) {
 
     async create(manifest, key, values, { rows, data } = {}) {
       const source = sourceOf(manifest, key)
+      const single = singleOf(manifest, source)
+      if (single) throw onlyPatch(single)
       const checked = checkRecord(manifest, key, values, { data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       const body = { ...checked.data }
@@ -313,17 +323,24 @@ export function createGcrAdapter(config) {
       return rowToFields(binding, rowFrom(await request('POST', pathFor(manifest, source), { body: valuesToColumns(binding, body) })))
     },
 
-    /** A PATCH: only the fields in `values` are checked and sent; the rest of the row is untouched. */
+    /**
+     * A PATCH: only the fields in `values` are checked and sent; the rest of
+     * the row is untouched. A single-record contract is PATCHed without an id:
+     * the record is the token's business's.
+     */
     async update(manifest, key, id, values, { data } = {}) {
       const source = sourceOf(manifest, key)
       const checked = checkRecord(manifest, key, values, { partial: true, data: await lookupData(source, values, data, (k) => adapter.list(manifest, k)) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
       const binding = bindingOf(manifest, source)
-      return rowToFields(binding, rowFrom(await request('PATCH', pathFor(manifest, source, id), { body: valuesToColumns(binding, checked.data) })))
+      const path = singleOf(manifest, source) ? contractPath(binding.contract) : pathFor(manifest, source, id)
+      return rowToFields(binding, rowFrom(await request('PATCH', path, { body: valuesToColumns(binding, checked.data) })))
     },
 
     async remove(manifest, key, id) {
       const source = sourceOf(manifest, key)
+      const single = singleOf(manifest, source)
+      if (single) throw onlyPatch(single)
       await request('DELETE', pathFor(manifest, source, id))
       return true
     },

@@ -147,6 +147,9 @@ export declare function templateSpecs(): Record<string, ViewSpec>
 export declare const SURFACE_KINDS: string[]
 export declare const CONTRACT_FAMILIES: Readonly<Record<ContractFamily, string>>
 export declare const CONTRACTS: readonly Contract[]
+/** One record per business (business.profile): PATCHed without an id, never created or deleted. */
+export declare const SINGLE_CONTRACTS: readonly Contract[]
+export declare function isSingleContract(contract: unknown): boolean
 export declare const RESOURCES: readonly string[]
 export declare const BINDING_ACCESS: BindingAccess[]
 export declare const ACTION_KINDS: ActionKind[]

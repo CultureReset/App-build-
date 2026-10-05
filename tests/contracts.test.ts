@@ -24,11 +24,14 @@ const COLUMNS: Record<string, { table: string; columns: string[] }> = {
   'media.images': { table: 'entity_photos', columns: ['url', 'image_path', 'caption', 'is_cover', 'sort_order'] },
   'faqs.items': { table: 'faqs', columns: ['question', 'answer', 'sort_order'] },
   'leads.items': { table: 'entity_leads', columns: ['name', 'email', 'phone', 'message', 'source', 'status'] },
-  'listings.items': { table: 'offerings', columns: ['name', 'description', 'unit', 'price_from', 'capacity', 'active', 'details', 'kind', 'sort_order'] },
+  'listings.items': { table: 'offerings', columns: ['name', 'description', 'unit', 'price_from', 'capacity', 'active', 'details', 'kind', 'sort_order', 'image_url'] },
   'business.links': { table: 'entity', columns: ['network', 'url'] },
-  'menu.items': { table: 'menu_items', columns: ['item_name', 'section_id', 'price', 'description', 'image_url', 'is_available'] },
+  // sort_order and is_available: sql/nextgent_menu_items_order.sql (DECISIONS #65); tags: schema.sql text[].
+  'menu.items': { table: 'menu_items', columns: ['item_name', 'section_id', 'price', 'description', 'image_url', 'tags', 'is_available', 'sort_order'] },
   'menu.sections': { table: 'menu_sections', columns: ['section_name', 'sort_order'] },
   'business.currency': { table: 'entity', columns: ['currency'] },
+  // The profile columns the profile and actions apps read (schema.sql entity; served read-only by the registry).
+  'business.profile': { table: 'entity', columns: ['name', 'subtitle', 'description', 'address_line_1', 'logo_url', 'hero_image_url', 'phone', 'email', 'website_url', 'booking_url', 'directions_url'] },
 }
 
 function schemaColumns(table: string): string[] | null {

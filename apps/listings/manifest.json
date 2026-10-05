@@ -3,7 +3,7 @@
   "id": "core-listings",
   "name": "Listings",
   "summary": "Show what you have available, with a way to reach you on every one.",
-  "description": "Anything you list: each entry gets a photo, a price, a status badge and its own details. Visitors go from the thing they are interested in straight to the full details.",
+  "description": "Anything you list: each entry gets a photo, a price per unit, a kind badge, a capacity and its own details. Visitors filter by kind and open the one they are interested in.",
   "version": "1.0.0",
   "publisher": "core",
   "icon": "🏷️",
@@ -71,7 +71,7 @@
       }
     },
     "sources": {
-      "listings": {
+      "catalogue": {
         "from": "business",
         "binding": "listings",
         "label": "Listings",
@@ -83,6 +83,12 @@
             "type": "text",
             "required": true,
             "maxLength": 120
+          },
+          {
+            "key": "image_url",
+            "label": "Photo",
+            "type": "image",
+            "help": "A link to a photo of the listing."
           },
           {
             "key": "kind",
@@ -134,24 +140,32 @@
     "views": {
       "owner": [
         {
-          "type": "collection",
-          "source": "listings"
+          "type": "listing-manager",
+          "source": "catalogue",
+          "fields": {
+            "title": "title",
+            "image": "image_url",
+            "kind": "kind",
+            "price": "price",
+            "unit": "unit",
+            "capacity": "capacity",
+            "description": "description"
+          }
         }
       ],
       "public": [
         {
-          "type": "list",
-          "source": "listings",
+          "type": "listings",
+          "source": "catalogue",
           "style": "grid",
           "fields": {
             "title": "title",
-            "subtitle": "unit",
-            "value": "price",
-            "badge": "kind",
-            "body": "description",
-            "meta": [
-              "capacity"
-            ]
+            "image": "image_url",
+            "kind": "kind",
+            "price": "price",
+            "unit": "unit",
+            "capacity": "capacity",
+            "description": "description"
           }
         }
       ]

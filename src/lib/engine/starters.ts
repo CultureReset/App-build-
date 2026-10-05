@@ -91,6 +91,22 @@ function publicSurfaceOf(manifest: Manifest, title: string | undefined): PublicS
       return { ...base, template: 'board', defaultVariant: style === 'cards' ? 'cards' : 'list', bodyField: one('body') }
     case 'form':
       return { ...base, template: 'form', submitCollection: v.source, defaultVariant: style === 'feature' ? 'feature' : 'stack' }
+    // Engine templates (DECISIONS #51). The builder's own template set predates
+    // them, so each maps onto the nearest builder template; the trip back
+    // (from-module.ts) yields the core view that template compiles to, not the
+    // engine template. Teaching the builder the templates themselves is open.
+    case 'menu':
+      return { ...base, template: 'catalog', defaultVariant: style === 'rows' ? 'list' : 'cards' }
+    case 'listings':
+      return { ...base, template: 'listings', defaultVariant: style === 'list' ? 'list' : 'grid', imageField: one('image'), subtitleField: one('unit'), priceField: one('price'), badgeField: one('kind'), linkField: one('link'), bodyField: one('description'), metaFields: one('capacity') ? [one('capacity') as string] : undefined }
+    case 'gallery':
+      return { ...base, template: 'gallery', defaultVariant: style === 'carousel' ? 'strip' : 'grid', imageField: one('image'), linkField: one('link') }
+    case 'social':
+      return { ...base, template: 'socials', defaultVariant: 'icons', linkField: one('link') }
+    case 'actions':
+      return { ...base, template: 'actions', defaultVariant: style === 'grid' ? 'grid' : style === 'icons' ? 'inline' : 'buttons', linkField: one('link') ?? one('book') ?? one('directions') }
+    case 'profile':
+      return { ...base, template: 'catalog', defaultVariant: 'cards' }
     default:
       return undefined
   }

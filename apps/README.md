@@ -9,13 +9,15 @@ What each app reads from the business and what it creates for the owner (scoping
 | App | Reads from the business | Writes to the business | Own tables | Visitor door | Emits |
 | --- | --- | --- | --- | --- | --- |
 | action-buttons | — | — | `shortcuts` (public read) | — | — |
+| actions | `business.profile` (binding `profile`: phone, email, website, booking and directions links) — public `actions` template; owner `profile-editor` (read-only: the contract is served read-only) | — | — | — | — |
 | enquiry-form | `leads.items` (binding `leads`) | each enquiry becomes a lead; also an inbox message (`inbox: true`) | — | the enquiry form | `core-enquiry-form.submitted` |
 | faq | `faqs.items` (binding `faqs`) | the owner edits questions and answers in place | — | — | — |
-| gallery | `media.images` (binding `media`; `image_url` → column `url`) | the owner adds, captions, reorders photos and picks the cover | — | — | — |
+| gallery | `media.images` (binding `media`; `image_url` → column `url`) — public `gallery` template (grid/carousel, lightbox, cover first) | the owner adds, captions, reorders photos and picks the cover (`media-manager` template) | — | — | — |
 | link-hub | — | — | `links` (public read) | — | — |
-| listings | `listings.items` (binding `listings`, served from `offerings`; `title` → `name`, `price` → `price_from`, `visible` → `active`; `kind` is a filterable field, DECISIONS #62), `business.currency` for prices | the owner adds and edits listings | — | — | — |
-| qr-menu | `menu.sections`, `menu.items` (bindings; items carry no sort order — `menu_items` has no such column), `business.currency` for prices | the owner edits menu items (`menu:write`, optional) | — | — | — |
-| social-links | `business.links` (binding `links`), served as rows `{id, network, url}` (DECISIONS #63); the network is whatever the business keeps, not a list written here | the owner adds links | — | — | — |
+| listings | `listings.items` (binding `listings`, source `catalogue`, served from `offerings`; `title` → `name`, `price` → `price_from`, `visible` → `active`; `kind` is a filterable field, DECISIONS #62; `image_url` is the photo), `business.currency` for prices — public `listings` template | the owner adds, shows/hides, reorders and edits listings (`listing-manager` template) | — | — | — |
+| profile | `business.profile` (binding `profile`: name, tagline, about, address, logo, cover, contact links) — public `profile` template; owner `profile-editor` (read-only: the contract is served read-only) | — | — | — | — |
+| qr-menu | `menu.sections`, `menu.items` (bindings; items order by `sort_order` and hide by `is_available`, sql/nextgent_menu_items_order.sql, DECISIONS #65; `image_url` the photo, `tags` the badges), `business.currency` for prices — public `menu` template (sticky section nav, cards, sold-out state, item detail) | the owner edits sections and items, toggles sold out, edits prices in place (`menu-editor` template; `menu:write`, optional) | — | — | — |
+| social-links | `business.links` (binding `links`), served as rows `{id, network, url}` (DECISIONS #63); the network is whatever the business keeps, not a list written here — public `social` template (icons keyed by a slug of the network, for the owner's stylesheet) | the owner adds links | — | — | — |
 | song-requests | — | — | `requests` (public append, `inbox: true`) | the request form | `core-song-requests.submitted` |
 | video | — | — | `videos` (public read) | — | — |
 

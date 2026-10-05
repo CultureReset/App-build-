@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "id": "core-actions",
+  "name": "Actions",
+  "summary": "Call, text, email, book, directions — one tap each, from the details you already keep.",
+  "description": "The row of buttons that turns a visitor into a conversation, built from the phone, email, website, booking and directions links of the business profile. Change a number once under Business and every button follows.",
+  "version": "1.0.0",
+  "publisher": "core",
+  "icon": "📲",
+  "requires": {
+    "platform": "1"
+  },
+  "runtime": {
+    "type": "engine",
+    "engine": "1"
+  },
+  "surfaces": [
+    {
+      "id": "owner",
+      "kind": "dashboard",
+      "title": "Contact details",
+      "path": "/owner",
+      "display_modes": [
+        "page"
+      ]
+    },
+    {
+      "id": "public",
+      "kind": "public",
+      "title": "Get in touch",
+      "path": "/public",
+      "display_modes": [
+        "inline",
+        "card",
+        "page"
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "id": "business:read",
+      "reason": "Reads the phone, email, website, booking and directions links of the business profile."
+    }
+  ],
+  "bindings": {
+    "profile": {
+      "contract": "business.profile",
+      "access": "read"
+    }
+  },
+  "pricing": {
+    "model": "free"
+  },
+  "ui": {
+    "sources": {
+      "contact_points": {
+        "from": "business",
+        "binding": "profile",
+        "label": "Contact details",
+        "labelSingular": "Contact details",
+        "fields": [
+          {
+            "key": "phone",
+            "label": "Phone",
+            "type": "phone"
+          },
+          {
+            "key": "email",
+            "label": "Email",
+            "type": "email"
+          },
+          {
+            "key": "website_url",
+            "label": "Website",
+            "type": "url"
+          },
+          {
+            "key": "booking_url",
+            "label": "Booking link",
+            "type": "url"
+          },
+          {
+            "key": "directions_url",
+            "label": "Directions link",
+            "type": "url"
+          }
+        ],
+        "title": "phone"
+      }
+    },
+    "views": {
+      "owner": [
+        {
+          "type": "profile-editor",
+          "source": "contact_points"
+        }
+      ],
+      "public": [
+        {
+          "type": "actions",
+          "source": "contact_points",
+          "style": "buttons",
+          "fields": {
+            "phone": "phone",
+            "sms": "phone",
+            "email": "email",
+            "link": "website_url",
+            "book": "booking_url",
+            "directions": "directions_url"
+          }
+        }
+      ]
+    }
+  }
+}

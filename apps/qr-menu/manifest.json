@@ -3,7 +3,7 @@
   "id": "core-qr-menu",
   "name": "QR Menu",
   "summary": "A live menu customers scan at the table.",
-  "description": "Shows the menu the business already keeps — change a price once under Business and the QR menu, the public page and every other screen show it. Customers scan a code and read it on their phone.",
+  "description": "Shows the menu the business already keeps — change a price once under Business and the QR menu, the public page and every other screen show it. Customers scan a code and read it on their phone: a sticky row of sections, item cards with photo, price, description and badges, sold-out items marked.",
   "version": "1.0.0",
   "publisher": "core",
   "icon": "🍽️",
@@ -127,6 +127,19 @@
             "min": 0
           },
           {
+            "key": "image_url",
+            "label": "Photo",
+            "type": "image",
+            "help": "A link to a photo of the item."
+          },
+          {
+            "key": "tags",
+            "label": "Badges",
+            "type": "text",
+            "maxLength": 120,
+            "help": "Short labels shown on the item, separated by commas."
+          },
+          {
             "key": "section_id",
             "label": "Section",
             "type": "select",
@@ -145,18 +158,24 @@
         "title": "item_name",
         "subtitle": "price",
         "group": "section_id",
-        "visibleWhen": "is_available"
+        "visibleWhen": "is_available",
+        "order": "sort_order",
+        "sortable": true
       }
     },
     "views": {
       "owner": [
         {
-          "type": "collection",
-          "source": "items"
-        },
-        {
-          "type": "collection",
-          "source": "sections"
+          "type": "menu-editor",
+          "source": "items",
+          "fields": {
+            "title": "item_name",
+            "price": "price",
+            "available": "is_available",
+            "image": "image_url",
+            "description": "description",
+            "badges": "tags"
+          }
         },
         {
           "type": "settings"
@@ -164,13 +183,16 @@
       ],
       "public": [
         {
-          "type": "list",
+          "type": "menu",
           "source": "items",
-          "style": "list",
+          "style": "cards",
           "fields": {
             "title": "item_name",
-            "body": "description",
-            "value": "price"
+            "description": "description",
+            "price": "price",
+            "image": "image_url",
+            "badges": "tags",
+            "available": "is_available"
           }
         },
         {

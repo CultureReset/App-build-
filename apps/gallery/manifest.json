@@ -3,7 +3,7 @@
   "id": "core-gallery",
   "name": "Gallery",
   "summary": "Photos of the work, the room, the product.",
-  "description": "A grid of images with optional captions. Useful anywhere the thing you do is easier to show than to describe.",
+  "description": "A grid or carousel of photos with captions and a lightbox, the cover first. Useful anywhere the thing you do is easier to show than to describe.",
   "version": "1.0.0",
   "publisher": "core",
   "icon": "🖼️",
@@ -95,18 +95,24 @@
     "views": {
       "owner": [
         {
-          "type": "collection",
-          "source": "photos"
+          "type": "media-manager",
+          "source": "photos",
+          "fields": {
+            "image": "image_url",
+            "caption": "caption",
+            "cover": "is_cover"
+          }
         }
       ],
       "public": [
         {
-          "type": "images",
+          "type": "gallery",
           "source": "photos",
           "style": "grid",
           "fields": {
             "image": "image_url",
-            "caption": "caption"
+            "caption": "caption",
+            "cover": "is_cover"
           }
         }
       ]

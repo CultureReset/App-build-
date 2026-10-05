@@ -65,8 +65,8 @@ function sampleRows(manifest: Manifest): Rows {
   return data
 }
 
-test('there are ten converted apps with unique ids', () => {
-  assert.equal(names.length, 10)
+test('there are twelve shipped apps with unique ids', () => {
+  assert.equal(names.length, 12)
   const ids = names.map((n) => load(n).id)
   assert.equal(new Set(ids).size, ids.length)
 })

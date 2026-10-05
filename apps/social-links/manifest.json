@@ -91,7 +91,7 @@
       ],
       "public": [
         {
-          "type": "links",
+          "type": "social",
           "source": "profiles",
           "style": "icons",
           "fields": {

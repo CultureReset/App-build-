@@ -269,7 +269,15 @@ function checkV1(m, c) {
     if (!isObj(m.events)) add('events', 'must be an object.')
     else {
       only(m.events, ['emits', 'subscribes'], 'events')
-      if (arr(m.events.emits, 'events.emits')) m.events.emits.forEach((e, i) => str(e, `events.emits[${i}]`, { pattern: DOTTED, required: true }))
+      if (arr(m.events.emits, 'events.emits')) {
+        m.events.emits.forEach((e, i) => {
+          if (!str(e, `events.emits[${i}]`, { pattern: DOTTED, required: true })) return
+          // App events are <manifest id>.<event>, the id being the store key (DECISIONS #55).
+          if (isStr(m.id) && !e.startsWith(`${m.id}.`)) {
+            add(`events.emits[${i}]`, `must start with the manifest id: "${m.id}.${e.split('.').slice(1).join('.') || 'event'}".`)
+          }
+        })
+      }
       if (arr(m.events.subscribes, 'events.subscribes')) {
         m.events.subscribes.forEach((s, i) => {
           const p = `events.subscribes[${i}]`

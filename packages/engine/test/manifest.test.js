@@ -329,11 +329,11 @@ test('ui.format may read currency and locale from a binding', () => {
 
 test('events are still validated', () => {
   assert.ok(has(sampleManifest({ events: { emits: ['nodots'] } }), 'events.emits[0] must match'))
-  assert.equal(validateManifest(sampleManifest({ events: { emits: ['sample.note_added'] } })).ok, true)
+  assert.equal(validateManifest(sampleManifest({ events: { emits: ['test-sample.note_added'] } })).ok, true)
 })
 
 test('dotted names allow dashes inside segments (app events are <appKey>.<event>, DECISIONS #54)', () => {
-  assert.equal(validateManifest(sampleManifest({ events: { emits: ['qr-menu.submitted'] } })).ok, true)
+  assert.equal(validateManifest(sampleManifest({ id: 'qr-menu', events: { emits: ['qr-menu.submitted'] } })).ok, true)
   assert.ok(has(sampleManifest({ events: { emits: ['Qr.menu'] } }), 'events.emits[0] must match'))
   assert.ok(has(sampleManifest({ events: { emits: ['-qr.menu'] } }), 'events.emits[0] must match'))
 })
@@ -345,4 +345,10 @@ test('inbox: a read-write binding may flag its visitor submissions for the inbox
   assert.deepEqual(inboxBindings(m), ['faqs'])
   m.bindings.currency.inbox = true
   assert.ok(has(m, 'bindings.currency.inbox is only for a read-write binding'))
+})
+
+test('app events are namespaced by the manifest id, which is the store key (DECISIONS #55)', () => {
+  assert.equal(validateManifest(sampleManifest({ events: { emits: ['test-sample.submitted'] } })).ok, true)
+  assert.ok(has(sampleManifest({ events: { emits: ['sample.note_added'] } }), 'events.emits[0] must start with the manifest id: "test-sample.note_added"'))
+  assert.ok(has(sampleManifest({ events: { emits: ['qr-menu.submitted'] } }), 'events.emits[0] must start with the manifest id'))
 })

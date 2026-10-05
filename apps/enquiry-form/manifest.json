@@ -55,7 +55,7 @@
   },
   "events": {
     "emits": [
-      "enquiry-form.submitted"
+      "core-enquiry-form.submitted"
     ]
   },
   "config": [

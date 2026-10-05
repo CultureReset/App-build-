@@ -49,7 +49,8 @@ app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
   owner's inbox (scoping §6). Defaults to true for any table that is public `append`; `inboxTables()` reads it.
   A read-write binding takes the same flag (`bindings.<key>.inbox`, `inboxBindings()`) for submissions that go
   into the business, such as a lead.
-- `events.emits` — the events the app's writes fire, namespaced `<app>.<event>` (DECISIONS #47).
+- `events.emits` — the events the app's writes fire, namespaced `<manifest id>.<event>` where the id is the
+  store key (`core-enquiry-form.submitted`; DECISIONS #47, #55). The validator refuses any other prefix.
 - `ui` — what the engine draws:
   - `ui.sources.<key>` — where rows come from. `from: "business"` names a binding (`binding: "menu"`), or —
     the older form — a gcr-api-clean section and the CONTRACT §6 resource it belongs to

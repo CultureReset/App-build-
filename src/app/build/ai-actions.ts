@@ -8,6 +8,7 @@ import { aiDraftToModuleDraft } from '@/lib/ai/map-draft'
 import { validateDraft } from '@/lib/modules/derive'
 import { draftContext } from '@/lib/engine/drafts'
 import { createHourlyLimiter, maxClientsFromEnv } from '@/lib/ai/builder-limit'
+import { gateConfig, resolveOperator } from '@/lib/paperclip-session'
 import type { AiDraft } from '@/lib/ai/draft-schema'
 import type { ProposeState } from '@/app/dashboard/build/ai-actions'
 
@@ -18,16 +19,13 @@ import type { ProposeState } from '@/app/dashboard/build/ai-actions'
  * proposeApp (ai-actions.ts there): the model's output is parsed against
  * AiDraft, mapped to a builder draft and run through validateDraft. What
  * differs is who pays and who is limited, since there is no App-build- login
- * any more: only the deployment's own provider (platform env) is used, and
- * only when BUILDER_AI_HOURLY_LIMIT is a positive number, which caps calls
- * per client address per hour on this server instance, holding at most
- * BUILDER_AI_MAX_CLIENTS addresses (lib/ai/builder-limit.ts). Deploy it where
- * only people who should build apps can reach it (e.g. behind Plat-admin).
- *
- * The client address is the first x-forwarded-for entry, which is only as
- * trustworthy as the proxy in front of this server: a Next server action has
- * no view of the connection itself. Whether this builder should instead
- * require a login is an owner decision, not made here.
+ * any more: only the deployment's own provider (platform env) is used, the
+ * caller must hold a Paperclip instance-admin session (the same gate as
+ * src/proxy.ts, DECISIONS #50), and only when BUILDER_AI_HOURLY_LIMIT is a
+ * positive number, which caps calls per operator per hour on this server
+ * instance, holding at most BUILDER_AI_MAX_CLIENTS operators
+ * (lib/ai/builder-limit.ts). The limit is keyed on the Paperclip user id,
+ * never on a forwarded address (closes DECISIONS #18).
  */
 
 function hourlyLimit(): number {
@@ -48,8 +46,11 @@ export async function proposeStoreApp(input: { prompt: string; previous?: AiDraf
   }
 
   const list = await headers()
-  const client = (list.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown'
-  if (!limiter.allow(client)) {
+  const operator = await resolveOperator({ cookie: list.get('cookie'), config: gateConfig() })
+  if (!operator?.isInstanceAdmin) {
+    return { ok: false, error: 'App generation is for Paperclip instance admins. Sign in to Paperclip first.' }
+  }
+  if (!limiter.allow(operator.userId)) {
     return { ok: false, error: 'You have generated a few apps already — try again in a little while.' }
   }
 

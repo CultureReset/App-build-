@@ -30,7 +30,10 @@ This repo is NEXT GENT's **shared app engine** and its **app builder** (plan §3
   (DECISIONS #42). The builder starts from them (`src/lib/engine/starters.ts`, `draftFromEngineManifest`),
   keeping business bindings; the home page lists them. `src/modules/*/manifest.ts` are retired and frozen —
   read only by the switched-off platform (its catalogue, demo page, seed and layouts).
-- **The builder** (manual, describe-it, speak-it) is at `/build` with no login. It still edits the same
+- **The builder** (manual, describe-it, speak-it) is at `/build`, for Paperclip instance admins only
+  (DECISIONS #50): `src/proxy.ts` forwards the Paperclip cookie to `PAPERCLIP_URL` and lets an instance
+  admin through, sends a signed-out visitor to `PAPERCLIP_LOGIN_URL`, and refuses the rest; app generation
+  checks the same session and is rate-limited per operator. It still edits the same
   draft (`src/lib/modules/derive.ts`), now with business sources: a collection can be bound to a data
   contract (`bindings`, DECISIONS #45) instead of its own table. Its output is an engine manifest
   (`src/lib/engine/from-module.ts`) to download or publish into Paperclip's store
@@ -357,7 +360,8 @@ src/modules/<id>/manifest.ts     Retired, frozen starters (definitions live in a
 src/app/dashboard/               Owner-facing screens and server actions
 src/components/ghost/            My Ghost panel (calls gcr-api-clean /api/nodes)
 src/lib/supabase/                Browser and server Supabase clients (anon key only)
-src/proxy.ts                     Session refresh; sends logged-out visitors from /dashboard to /login
+src/proxy.ts                     The builder gate (Paperclip instance-admin session); the retired platform's session refresh
+src/lib/paperclip-session.ts     Asks Paperclip who holds the cookie and whether they administer the instance
 src/lib/demo/page.ts             Sample content for /preview
 src/app/u/[handle]/              The public layer
 src/app/preview/                 A live example of the public front end

@@ -85,3 +85,8 @@ test('gcr-api-clean registry serves every contract the shipped apps bind', { ski
   const missing = contracts.filter((c) => !registry().contractFor(c))
   assert.deepEqual(missing, [], `gcr-api-clean does not serve: ${missing.join(', ')}`)
 })
+
+test('enquiry-form asks for the contacts resource, not business (DECISIONS #59)', () => {
+  const m = shippedManifests().find((s) => s.dir === 'enquiry-form')!.manifest
+  assert.deepEqual(m.permissions!.map((p) => p.id), ['contacts:read', 'contacts:write'])
+})

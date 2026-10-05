@@ -37,9 +37,10 @@ app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
   `{ "<key>": { "contract": "menu.items", "access": "read" | "read-write", "fieldMap"?: { "<field>": "<column>" } } }`.
   A contract is a dotted name; its first segment is the family, and the family decides the CONTRACT §6
   resource whose permission the app must declare with a reason: `menu.*` → `menu`, `booking.*` → `bookings`,
-  `availability.*` → `availability`, `reviews.*` → `reviews`, `events.*` → `events`, and `media.*`, `faqs.*`,
-  `leads.*`, `customers.*`, `business.*`, `listings.*`, `products.*` → `business` (`CONTRACT_FAMILIES`; the
-  same table lives in gcr-api-clean `lib/dataContracts.js`). `access: "read"` needs `<resource>:read`;
+  `availability.*` → `availability`, `reviews.*` → `reviews`, `events.*` → `events`, `leads.*` and
+  `customers.*` → `contacts` (DECISIONS #59), and `media.*`, `faqs.*`, `business.*`, `listings.*`,
+  `products.*` → `business` (`CONTRACT_FAMILIES`; the same table lives in gcr-api-clean
+  `lib/dataContracts.js`; `RESOURCES` lists every resource a permission may name). `access: "read"` needs `<resource>:read`;
   `"read-write"` needs `<resource>:write` as well — write never implies read. Apps use the contract's
   column names unless the binding declares a `fieldMap`. `CONTRACTS` lists the names the platform serves.
 - `actions` (DECISIONS #46) — what an agent may do with the app through the business MCP:

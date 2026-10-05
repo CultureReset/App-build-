@@ -4,7 +4,7 @@
 
 export {
   SCHEMA_VERSION, ENGINE_RUNTIME, PERMISSION, FIELD_TYPES, VIEW_TYPES, SURFACE_KINDS,
-  CONTRACT_FAMILIES, CONTRACTS, BINDING_ACCESS, ACTION_KINDS,
+  CONTRACT_FAMILIES, CONTRACTS, RESOURCES, BINDING_ACCESS, ACTION_KINDS,
   validateManifest, parseManifest, permissionsOf, resourcesOf,
   resourceForContract, bindingPermissions, sourceResource, inboxTables, inboxBindings,
 } from './manifest.js'

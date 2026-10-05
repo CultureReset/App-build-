@@ -20,7 +20,8 @@ What each app reads from the business and what it creates for the owner (scoping
 | video | — | — | `videos` (public read) | — | — |
 
 Permissions follow from the bindings (`<resource>:read`, plus `<resource>:write` for read-write): every
-binding above is to a `business` family contract except qr-menu's, which are `menu`. Currency is the
+binding above is to a `business` family contract except qr-menu's, which are `menu`, and enquiry-form's
+`leads.items`, which is `contacts` (DECISIONS #59). Currency is the
 business's own setting (`ui.format.currency: { "binding": "currency" }`), never an install setting.
 
 Events are namespaced `<manifest id>.<event>`, the id being the store key (DECISIONS #47, #55); the registry

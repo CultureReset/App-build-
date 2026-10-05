@@ -66,12 +66,17 @@ export const CONTRACT_FAMILIES = Object.freeze({
   events: 'events',
   media: 'business',
   faqs: 'business',
-  leads: 'business',
-  customers: 'business',
+  // People are their own resource (DECISIONS #59): an app that reads the
+  // business's facts does not thereby read its leads and customers.
+  leads: 'contacts',
+  customers: 'contacts',
   business: 'business',
   listings: 'business',
   products: 'business',
 })
+
+/** The CONTRACT §6 resources a permission may name (gcr-api-clean lib/businessTables.js RESOURCES, plus contacts per DECISIONS #59). */
+export const RESOURCES = Object.freeze(['business', 'menu', 'availability', 'bookings', 'events', 'reviews', 'transactions', 'messages', 'contacts'])
 
 /** The contract names the platform serves today (CONS §3–§5); a picker lists these. */
 export const CONTRACTS = Object.freeze([

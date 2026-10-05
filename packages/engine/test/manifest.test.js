@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { validateManifest, parseManifest, permissionsOf, resourcesOf, resourceForContract, bindingPermissions, inboxTables, inboxBindings, CONTRACTS } from '../src/index.js'
+import { validateManifest, parseManifest, permissionsOf, resourcesOf, resourceForContract, bindingPermissions, inboxTables, inboxBindings, CONTRACTS, CONTRACT_FAMILIES, RESOURCES } from '../src/index.js'
 import { sampleManifest } from './fixtures.js'
 
 const errorsOf = (m, opts) => validateManifest(m, opts).errors.map((e) => `${e.path} ${e.message}`)
@@ -351,4 +351,16 @@ test('app events are namespaced by the manifest id, which is the store key (DECI
   assert.equal(validateManifest(sampleManifest({ events: { emits: ['test-sample.submitted'] } })).ok, true)
   assert.ok(has(sampleManifest({ events: { emits: ['sample.note_added'] } }), 'events.emits[0] must start with the manifest id: "test-sample.note_added"'))
   assert.ok(has(sampleManifest({ events: { emits: ['qr-menu.submitted'] } }), 'events.emits[0] must start with the manifest id'))
+})
+
+test('leads and customers are the contacts resource (DECISIONS #59)', () => {
+  assert.equal(resourceForContract('leads.items'), 'contacts')
+  assert.equal(resourceForContract('customers.items'), 'contacts')
+  assert.ok(RESOURCES.includes('contacts') && RESOURCES.includes('business') && RESOURCES.includes('menu'))
+  for (const resource of Object.values(CONTRACT_FAMILIES)) assert.ok(RESOURCES.includes(resource), resource)
+  const m = sampleManifest()
+  m.bindings = { leads: { contract: 'leads.items', access: 'read-write' } }
+  assert.ok(has(m, 'bindings.leads reads and writes "leads.items", so permissions must declare "contacts:read"'))
+  m.permissions.push({ id: 'contacts:read', reason: 'Shows the enquiries received.' }, { id: 'contacts:write', reason: 'Saves each enquiry as a lead.' })
+  assert.deepEqual(validateManifest(m).errors, [])
 })

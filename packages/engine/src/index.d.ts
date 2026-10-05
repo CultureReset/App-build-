@@ -107,6 +107,7 @@ export declare const VIEW_TYPES: Record<string, { slots: string[]; multi?: strin
 export declare const SURFACE_KINDS: string[]
 export declare const CONTRACT_FAMILIES: Readonly<Record<ContractFamily, string>>
 export declare const CONTRACTS: readonly Contract[]
+export declare const RESOURCES: readonly string[]
 export declare const BINDING_ACCESS: BindingAccess[]
 export declare const ACTION_KINDS: ActionKind[]
 export declare function validateManifest(input: unknown, options?: { item?: StoreItemRef; semver?: string }): { ok: boolean; errors: ValidationError[]; manifest: Manifest | null }

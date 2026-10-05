@@ -38,11 +38,11 @@
   ],
   "permissions": [
     {
-      "id": "business:read",
+      "id": "contacts:read",
       "reason": "Shows the enquiries the business has received."
     },
     {
-      "id": "business:write",
+      "id": "contacts:write",
       "reason": "Saves each enquiry a visitor sends as a lead of the business."
     }
   ],

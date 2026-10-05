@@ -15,6 +15,12 @@
 
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { renderOwner, renderPublic, renderSurface, checkRecord } from './render.js'
+import { KEY } from './blocks.js'
+import { contributedBlock } from './views/index.js'
+import { slug } from './view-helpers.js'
+
+const keyClass = (p, name, key) => (typeof key === 'string' && KEY.test(key) ? ` ${p}-${name}-${slug(key)}` : '')
+const anchorId = (p, id) => `${p}-${slug(id)}`
 
 const INPUT = { email: 'email', phone: 'tel', number: 'number', money: 'number', date: 'date', time: 'time', url: 'url', image: 'url', color: 'color', secret: 'password' }
 
@@ -34,7 +40,7 @@ function Anchor({ href, className, children }) {
 }
 
 function Button({ b, p, onAction, busy }) {
-  const className = `${p}-button ${p}-button--${b.style || 'primary'}`
+  const className = `${p}-button ${p}-button--${b.style || 'primary'}${keyClass(p, 'key', b.key)}`
   const inner = [
     b.icon ? h('span', { key: 'i', className: `${p}-icon`, 'aria-hidden': true }, b.icon) : null,
     h('span', { key: 'l', className: `${p}-label` }, b.label),
@@ -118,31 +124,157 @@ function Form({ b, p, onAction, busy }) {
   )
 }
 
-function ListItem({ it, p }) {
-  const inner = [
-    it.image && okHref(it.image.src, IMG) ? h('img', { key: 'img', className: `${p}-item-image`, src: it.image.src, alt: it.image.alt || '', loading: 'lazy' }) : null,
+function ButtonRow({ list, p, onAction, busy, className }) {
+  if (!list?.length) return null
+  return h('div', { className }, list.map((a, i) => h(Button, { key: i, b: a, p, onAction, busy })))
+}
+
+function ListItem({ it, p, onAction, busy }) {
+  const image = it.image && okHref(it.image.src, IMG) ? it.image : null
+  const head = [
+    image ? h('img', { key: 'img', className: `${p}-item-image`, src: image.src, alt: image.alt || '', loading: 'lazy' }) : null,
     h('span', { key: 't', className: `${p}-item-title` }, it.title),
     it.badge ? h('span', { key: 'b', className: `${p}-item-badge` }, it.badge) : null,
+    it.badges?.length ? h('span', { key: 'bs', className: `${p}-item-badges` }, it.badges.map((x, i) => h('span', { key: i, className: `${p}-item-badge` }, x))) : null,
     it.value ? h('span', { key: 'v', className: `${p}-item-value` }, it.value) : null,
     it.subtitle ? h('span', { key: 's', className: `${p}-item-subtitle` }, it.subtitle) : null,
     it.meta?.length ? h('span', { key: 'm', className: `${p}-item-meta` }, it.meta.join(' · ')) : null,
-    it.body ? h('span', { key: 'bd', className: `${p}-item-body` }, it.body) : null,
     it.time ? h('span', { key: 'tm', className: `${p}-item-time` }, it.time) : null,
   ]
-  return h('li', { className: `${p}-item` }, it.href ? h(Anchor, { href: it.href, className: `${p}-item-link` }, inner) : inner)
+  const body = it.body ? h('span', { key: 'bd', className: `${p}-item-body` }, it.body) : null
+  let inner
+  if (it.detail) {
+    inner = h(
+      'details',
+      { className: `${p}-item-detail` },
+      h('summary', { className: `${p}-item-card` }, head),
+      h('div', { className: `${p}-item-more` }, image ? h('img', { className: `${p}-item-detail-image`, src: image.src, alt: image.alt || '', loading: 'lazy' }) : null, body),
+    )
+  } else {
+    inner = h('span', { className: `${p}-item-card` }, head, body)
+  }
+  return h(
+    'li',
+    { className: `${p}-item${it.unavailable ? ` ${p}-item--unavailable` : ''}` },
+    it.href && !it.detail ? h(Anchor, { href: it.href, className: `${p}-item-link` }, inner) : inner,
+    it.form ? h('div', { className: `${p}-item-form` }, h(Form, { key: `${it.form.id}|${JSON.stringify(it.form.values || {})}`, b: it.form, p, onAction, busy })) : null,
+    h(ButtonRow, { list: it.actions, p, onAction, busy, className: `${p}-item-actions` }),
+  )
 }
 
-function Block({ b, p, onAction, busy, depth }) {
+/** Photos with a lightbox: one open at a time, previous / next, close. */
+function Gallery({ b, p, onAction, busy }) {
+  const [open, setOpen] = useState(null)
+  const items = (b.items || []).filter((it) => okHref(it.src, IMG))
+  const current = open !== null && items[open] ? items[open] : null
+  return h(
+    Fragment,
+    null,
+    h(
+      'ul',
+      { className: `${p}-gallery ${p}-gallery--${b.style}` },
+      items.map((it, i) =>
+        h(
+          'li',
+          { key: it.id || i, className: `${p}-gallery-item${it.cover ? ` ${p}-gallery-item--cover` : ''}` },
+          h(
+            'button',
+            { type: 'button', className: `${p}-gallery-open`, onClick: () => setOpen(i) },
+            h('figure', null, h('img', { src: it.src, alt: it.alt, loading: 'lazy' }), it.caption ? h('figcaption', null, it.caption) : null),
+          ),
+          h(ButtonRow, { list: it.actions, p, onAction, busy, className: `${p}-item-actions` }),
+        ),
+      ),
+    ),
+    current
+      ? h(
+          'div',
+          { className: `${p}-lightbox ${p}-lightbox--open`, role: 'dialog', 'aria-modal': true },
+          h('button', { type: 'button', className: `${p}-lightbox-close`, 'aria-label': 'close', onClick: () => setOpen(null) }, '×'),
+          h('button', { type: 'button', className: `${p}-lightbox-prev`, 'aria-label': 'previous', onClick: () => setOpen((open + items.length - 1) % items.length) }, '‹'),
+          h('figure', null, h('img', { src: current.src, alt: current.alt }), current.caption ? h('figcaption', null, current.caption) : null, current.href ? h(Anchor, { href: current.href, className: `${p}-lightbox-link` }, current.href) : null),
+          h('button', { type: 'button', className: `${p}-lightbox-next`, 'aria-label': 'next', onClick: () => setOpen((open + 1) % items.length) }, '›'),
+        )
+      : null,
+  )
+}
+
+function Calendar({ b, p, onAction, busy }) {
+  const style = b.style || 'list'
+  return h(
+    'div',
+    { className: `${p}-calendar ${p}-calendar--${style}` },
+    b.title ? h('p', { className: `${p}-calendar-title` }, b.title) : null,
+    style !== 'list' ? h('ol', { className: `${p}-weekdays` }, (b.weekdays || []).map((w, i) => h('li', { key: i, className: `${p}-weekday` }, w))) : null,
+    h(
+      'ol',
+      { className: `${p}-days` },
+      (b.days || []).map((d, i) =>
+        h(
+          'li',
+          {
+            key: d.date,
+            className: `${p}-day${d.today ? ` ${p}-day--today` : ''}${d.entries?.length ? ` ${p}-day--busy` : ''}`,
+            style: i === 0 && style === 'month' && Number.isInteger(d.weekday) ? { gridColumnStart: Math.min(7, Math.max(0, d.weekday)) + 1 } : undefined,
+          },
+          h('span', { className: `${p}-day-label` }, d.label),
+          d.entries?.length
+            ? h(
+                'ul',
+                { className: `${p}-entries` },
+                d.entries.map((e, j) => {
+                  const inner = [
+                    e.time ? h('span', { key: 't', className: `${p}-entry-time` }, e.time) : null,
+                    e.title ? h('span', { key: 'n', className: `${p}-entry-title` }, e.title) : null,
+                    e.status ? h('span', { key: 's', className: `${p}-entry-status` }, e.status) : null,
+                    typeof e.capacity === 'number' ? h('span', { key: 'c', className: `${p}-entry-capacity` }, String(e.capacity)) : null,
+                  ]
+                  return h(
+                    'li',
+                    { key: e.id || j, className: `${p}-entry${keyClass(p, 'entry', e.key)}` },
+                    e.href ? h(Anchor, { href: e.href, className: `${p}-entry-link` }, inner) : inner,
+                    h(ButtonRow, { list: e.actions, p, onAction, busy, className: `${p}-item-actions` }),
+                  )
+                }),
+              )
+            : null,
+          h(ButtonRow, { list: d.actions, p, onAction, busy, className: `${p}-day-actions` }),
+        ),
+      ),
+    ),
+  )
+}
+
+function Block({ b, p, onAction, busy, depth, hidden, filter, onFilter }) {
   switch (b.type) {
     case 'section': {
       const level = Math.min(6, 2 + depth)
+      if (hidden) return null
       return h(
         'section',
-        { className: `${p}-section` },
-        b.title ? h(`h${level}`, { className: `${p}-section-title` }, b.title) : null,
+        { className: `${p}-section`, id: typeof b.id === 'string' ? anchorId(p, b.id) : undefined },
+        b.title || b.actions?.length
+          ? h('div', { className: `${p}-section-head` }, b.title ? h(`h${level}`, { className: `${p}-section-title` }, b.title) : null, h(ButtonRow, { list: b.actions, p, onAction, busy, className: `${p}-section-actions` }))
+          : null,
         h(BlockList, { blocks: b.blocks, p, onAction, busy, depth: depth + 1 }),
       )
     }
+    case 'nav':
+      // Anchors jump; a filter shows one of its sections at a time (state in BlockList).
+      return h(
+        'nav',
+        { className: `${p}-nav ${p}-nav--${b.style === 'filter' ? 'filter' : 'anchors'}` },
+        b.style === 'filter' ? h('button', { type: 'button', className: `${p}-nav-item${filter ? '' : ` ${p}-nav-item--active`}`, onClick: () => onFilter?.(null) }, '•') : null,
+        (b.items || []).map((it, i) =>
+          b.style === 'filter'
+            ? h('button', { key: i, type: 'button', className: `${p}-nav-item${filter === it.target ? ` ${p}-nav-item--active` : ''}`, onClick: () => onFilter?.(filter === it.target ? null : it.target) }, it.label)
+            : h('a', { key: i, className: `${p}-nav-item`, href: `#${anchorId(p, it.target)}` }, it.label),
+        ),
+      )
+    case 'gallery':
+      return h(Gallery, { b, p, onAction, busy })
+    case 'calendar':
+      return h(Calendar, { b, p, onAction, busy })
     case 'heading':
       return h(`h${Math.min(6, 1 + b.level)}`, { className: `${p}-heading` }, b.text)
     case 'text':
@@ -154,7 +286,7 @@ function Block({ b, p, onAction, busy, depth }) {
     case 'divider':
       return h('hr', { className: `${p}-divider` })
     case 'list':
-      return h('ul', { className: `${p}-list ${p}-list--${b.style}` }, (b.items || []).map((it, i) => h(ListItem, { key: it.id || i, it, p })))
+      return h('ul', { className: `${p}-list ${p}-list--${b.style}` }, (b.items || []).map((it, i) => h(ListItem, { key: it.id || i, it, p, onAction, busy })))
     case 'table':
       return h(
         'table',
@@ -205,13 +337,25 @@ function Block({ b, p, onAction, busy, depth }) {
       )
     case 'form':
       return h(Form, { key: `${b.id}|${JSON.stringify(b.values || {})}`, b, p, onAction, busy })
-    default:
-      return null
+    default: {
+      const contributed = contributedBlock(b.type)
+      if (!contributed) return null
+      return contributed.react(b, { h, p, Button, Anchor, ButtonRow, Form, okImg: (src) => okHref(src, IMG), onAction, busy, headingTag: `h${Math.min(6, 2 + depth)}` })
+    }
   }
 }
 
 function BlockList({ blocks, p, onAction, busy, depth }) {
-  return h(Fragment, null, (blocks || []).map((b, i) => h(Block, { key: `${b.type}-${i}`, b, p, onAction, busy, depth })))
+  // A filter nav among these blocks narrows the sections it targets to one.
+  const [filter, setFilter] = useState(null)
+  const targets = new Set((blocks || []).filter((b) => b.type === 'nav' && b.style === 'filter').flatMap((b) => (b.items || []).map((it) => it.target)))
+  return h(
+    Fragment,
+    null,
+    (blocks || []).map((b, i) =>
+      h(Block, { key: `${b.type}-${i}`, b, p, onAction, busy, depth, filter, onFilter: setFilter, hidden: Boolean(filter && b.type === 'section' && targets.has(b.id) && b.id !== filter) }),
+    ),
+  )
 }
 
 /** Draw a block tree. */
@@ -279,7 +423,12 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
         })
       switch (action.type) {
         case 'view.new':
-          return setUi((u) => ({ ...u, editing: { source: action.source, id: null } }))
+          // A day's "add", for one: the form opens with the values the button carried.
+          return setUi((u) => ({
+            ...u,
+            editing: { source: action.source, id: null },
+            values: action.values ? { ...u.values, [`${action.source}:new`]: { ...(u.values[`${action.source}:new`] || {}), ...action.values } } : u.values,
+          }))
         case 'view.edit':
           return setUi((u) => ({ ...u, editing: { source: action.source, id: action.id } }))
         case 'view.cancel':
@@ -288,11 +437,17 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
       setBusy(true)
       try {
         if (action.type === 'record.create' || action.type === 'record.update') {
-          const checked = checkRecord(manifest, action.source, values, { data: state.data })
+          // A button's quick update (a toggle, "make cover", an inline price) carries
+          // its own values and is partial: only those fields are checked and sent.
+          const quick = values === undefined && action.values ? action.values : null
+          const inline = Boolean(block && block.type === 'form' && action.type === 'record.update' && block.fields?.length && block.fields.length < 2)
+          const payload = quick || values
+          const partial = Boolean(quick || inline)
+          const checked = checkRecord(manifest, action.source, payload, { data: state.data, partial })
           if (!checked.ok) return fail({ errors: checked.errors })
-          if (action.type === 'record.create') await adapter.create(manifest, action.source, values, { rows: state.data[action.source] || [], data: state.data })
-          else await adapter.update(manifest, action.source, action.id, values, { data: state.data })
-          clear({ editing: null })
+          if (action.type === 'record.create') await adapter.create(manifest, action.source, payload, { rows: state.data[action.source] || [], data: state.data })
+          else await adapter.update(manifest, action.source, action.id, payload, { data: state.data })
+          clear(quick || inline ? {} : { editing: null })
           await load()
         } else if (action.type === 'record.delete') {
           await adapter.remove(manifest, action.source, action.id)

@@ -1,6 +1,8 @@
 // A small manifest that uses every view type, and sample rows built from
 // field types. Nothing here is an app; it only exercises the engine.
 
+import { viewModule } from '../src/index.js'
+
 export function sampleManifest(overrides = {}) {
   return {
     schema_version: 1,
@@ -116,3 +118,181 @@ export function sampleData() {
 }
 
 export const EMBEDS = [{ hosts: ['video.example.test'], id: { from: 'query', param: 'v' }, pattern: '^[a-z0-9]{6,20}$', src: 'https://player.example.test/embed/{id}' }]
+
+/**
+ * A manifest that uses every template view type (views/*.js) over fixture
+ * sources shaped like the contracts they are meant for, and plainly fake rows.
+ * Source keys are deliberately not the template names.
+ */
+function ownerViews(list) {
+  const registered = list.filter((v) => viewModule(v.type))
+  return registered.length ? registered : [{ type: 'collection', source: 'photos' }]
+}
+
+export function templatesManifest(overrides = {}) {
+  const img = (key) => ({ key, label: 'Image', type: 'image' })
+  return {
+    schema_version: 1,
+    id: 'test-templates',
+    name: 'Templates',
+    version: '1.0.0',
+    publisher: 'test',
+    runtime: { type: 'engine', engine: '1' },
+    surfaces: [
+      { id: 'owner', kind: 'dashboard', path: '/owner' },
+      { id: 'public', kind: 'public', title: 'Public', path: '/public' },
+    ],
+    permissions: [
+      { id: 'business:read', reason: 'Reads the business profile, photos, links and catalogue.' },
+      { id: 'business:write', reason: 'Edits them from inside this app.' },
+      { id: 'menu:read', reason: 'Reads the menu sections and items.' },
+      { id: 'menu:write', reason: 'Edits the menu from inside this app.' },
+      { id: 'availability:read', reason: 'Reads the dates the business has claimed.' },
+      { id: 'availability:write', reason: 'Adds and removes claims from inside this app.' },
+    ],
+    bindings: {
+      place: { contract: 'business.profile', access: 'read-write' },
+      links: { contract: 'business.links', access: 'read-write' },
+      media: { contract: 'media.images', access: 'read-write' },
+      sections: { contract: 'menu.sections', access: 'read-write' },
+      items: { contract: 'menu.items', access: 'read-write' },
+      offers: { contract: 'listings.items', access: 'read-write' },
+      claims: { contract: 'availability.claims', access: 'read-write' },
+    },
+    pricing: { model: 'free' },
+    ui: {
+      format: { currency: 'EUR' },
+      sources: {
+        place: {
+          from: 'business', binding: 'place', label: 'Place', labelSingular: 'Place',
+          fields: [
+            { key: 'name', label: 'Name', type: 'text', required: true },
+            { key: 'subtitle', label: 'Tagline', type: 'text' },
+            { key: 'description', label: 'About', type: 'longtext' },
+            { key: 'address', label: 'Address', type: 'text' },
+            { key: 'logo_url', label: 'Logo', type: 'image' },
+            { key: 'hero_image_url', label: 'Cover', type: 'image' },
+            { key: 'phone', label: 'Phone', type: 'phone' },
+            { key: 'email', label: 'Email', type: 'email' },
+            { key: 'website_url', label: 'Website', type: 'url' },
+            { key: 'booking_url', label: 'Booking link', type: 'url' },
+            { key: 'directions_url', label: 'Directions link', type: 'url' },
+          ],
+          title: 'name',
+        },
+        elsewhere: {
+          from: 'business', binding: 'links', label: 'Links', labelSingular: 'Link',
+          fields: [{ key: 'network', label: 'Network', type: 'text', required: true }, { key: 'url', label: 'Link', type: 'url', required: true }],
+          title: 'network',
+        },
+        photos: {
+          from: 'business', binding: 'media', label: 'Photos', labelSingular: 'Photo',
+          fields: [img('url'), { key: 'caption', label: 'Caption', type: 'text' }, { key: 'is_cover', label: 'Cover', type: 'boolean', default: false }],
+          title: 'caption', order: 'sort_order', sortable: true,
+        },
+        categories: {
+          from: 'business', binding: 'sections', label: 'Categories', labelSingular: 'Category',
+          fields: [{ key: 'section_name', label: 'Name', type: 'text', required: true }],
+          title: 'section_name', order: 'sort_order', sortable: true,
+        },
+        dishes: {
+          from: 'business', binding: 'items', label: 'Dishes', labelSingular: 'Dish',
+          fields: [
+            { key: 'item_name', label: 'Name', type: 'text', required: true },
+            { key: 'description', label: 'Description', type: 'longtext' },
+            { key: 'price', label: 'Price', type: 'money', min: 0 },
+            img('image_url'),
+            { key: 'tags', label: 'Tags', type: 'text' },
+            { key: 'section_id', label: 'Category', type: 'select', optionsFrom: { source: 'categories', label: 'section_name' } },
+            { key: 'is_available', label: 'Available', type: 'boolean', default: true },
+          ],
+          title: 'item_name', group: 'section_id', order: 'sort_order', sortable: true, visibleWhen: 'is_available',
+        },
+        catalogue: {
+          from: 'business', binding: 'offers', label: 'Catalogue', labelSingular: 'Entry',
+          fields: [
+            { key: 'name', label: 'Title', type: 'text', required: true },
+            { key: 'kind', label: 'Kind', type: 'text' },
+            { key: 'unit', label: 'Unit', type: 'text' },
+            { key: 'price_from', label: 'Price', type: 'money' },
+            { key: 'capacity', label: 'Capacity', type: 'number' },
+            { key: 'description', label: 'Description', type: 'longtext' },
+            img('image_url'),
+            { key: 'active', label: 'Shown', type: 'boolean', default: true },
+          ],
+          title: 'name', order: 'sort_order', sortable: true, visibleWhen: 'active',
+        },
+        claims: {
+          from: 'business', binding: 'claims', label: 'Claims', labelSingular: 'Claim',
+          fields: [
+            { key: 'title', label: 'Title', type: 'text' },
+            { key: 'date', label: 'Date', type: 'date', required: true },
+            { key: 'end_date', label: 'Until', type: 'date' },
+            { key: 'start_time', label: 'Time', type: 'time' },
+            { key: 'status', label: 'Status', type: 'text' },
+            { key: 'party', label: 'Party', type: 'number' },
+          ],
+          title: 'title',
+        },
+      },
+      views: {
+        // Only the admin templates that are registered (the public group can ship
+        // alone; with none, a core collection keeps the owner view set non-empty).
+        owner: ownerViews([
+          { type: 'profile-editor', source: 'place' },
+          { type: 'media-manager', source: 'photos', fields: { image: 'url', caption: 'caption', cover: 'is_cover' } },
+          { type: 'menu-editor', source: 'dishes', fields: { title: 'item_name', price: 'price', available: 'is_available', image: 'image_url', description: 'description', badges: 'tags' } },
+          { type: 'listing-manager', source: 'catalogue', fields: { title: 'name', image: 'image_url', kind: 'kind', price: 'price_from', unit: 'unit', capacity: 'capacity', description: 'description' } },
+          { type: 'availability-calendar', source: 'claims', style: 'month', fields: { date: 'date', end: 'end_date', time: 'start_time', status: 'status', capacity: 'party', title: 'title' } },
+        ]),
+        public: [
+          { type: 'profile', source: 'place', heading: 'About', fields: { name: 'name', tagline: 'subtitle', description: 'description', location: 'address', image: 'logo_url', cover: 'hero_image_url', phone: 'phone', email: 'email', link: 'website_url', book: 'booking_url', directions: 'directions_url' } },
+          { type: 'actions', source: 'place', heading: 'Reach us', style: 'icons', fields: { phone: 'phone', sms: 'phone', email: 'email', link: 'website_url', book: 'booking_url', directions: 'directions_url' } },
+          { type: 'social', source: 'elsewhere', heading: 'Elsewhere', fields: { label: 'network', link: 'url' } },
+          { type: 'gallery', source: 'photos', heading: 'Photos', fields: { image: 'url', caption: 'caption', cover: 'is_cover' } },
+          { type: 'menu', source: 'dishes', heading: 'Menu', fields: { title: 'item_name', description: 'description', price: 'price', image: 'image_url', badges: 'tags', available: 'is_available' } },
+          { type: 'listings', source: 'catalogue', heading: 'Listings', fields: { title: 'name', image: 'image_url', kind: 'kind', price: 'price_from', unit: 'unit', capacity: 'capacity', description: 'description' } },
+          { type: 'availability', source: 'claims', heading: 'Dates', fields: { date: 'date', end: 'end_date', time: 'start_time', status: 'status', capacity: 'party', title: 'title' } },
+        ],
+      },
+    },
+    ...overrides,
+  }
+}
+
+export function templatesData() {
+  return {
+    place: [{
+      id: 'b1', name: 'Place 1', subtitle: 'Tagline 1', description: '<b>Place 1</b> is a place.', address: 'Street 1', logo_url: 'https://img.example.test/logo.png',
+      hero_image_url: 'https://img.example.test/hero.png', phone: '+1 555 0101', email: 'hello@example.test', website_url: 'https://example.test',
+      booking_url: 'https://book.example.test', directions_url: 'https://maps.example.test/x',
+    }],
+    elsewhere: [
+      { id: 'network_a', network: 'Network A', url: 'https://a.example.test' },
+      { id: 'network_b', network: 'Network B', url: 'https://b.example.test' },
+      { id: 'bad', network: 'Bad', url: 'javascript:alert(1)' },
+    ],
+    photos: [
+      { id: 'p1', url: 'https://img.example.test/1.png', caption: 'Photo 1', is_cover: false, sort_order: 1 },
+      { id: 'p2', url: 'https://img.example.test/2.png', caption: 'Photo 2', is_cover: false, sort_order: 2 },
+      { id: 'p3', url: 'https://img.example.test/3.png', caption: 'Photo 3', is_cover: true, sort_order: 3 },
+      { id: 'p4', url: 'data:image/png;base64,AAA', caption: 'Photo 4', is_cover: false, sort_order: 4 },
+    ],
+    categories: [{ id: 'c1', section_name: 'Category 1', sort_order: 1 }, { id: 'c2', section_name: 'Category 2', sort_order: 2 }],
+    dishes: [
+      { id: 'd1', item_name: 'Item 1', description: 'Description 1', price: 9.5, image_url: 'https://img.example.test/d1.png', tags: ['Tag A', 'Tag B'], section_id: 'c1', is_available: true, sort_order: 1 },
+      { id: 'd2', item_name: 'Item 2', description: 'Description 2', price: 12, section_id: 'c1', is_available: false, sort_order: 2 },
+      { id: 'd3', item_name: 'Item 3', price: 4, section_id: 'c2', is_available: true, sort_order: 3 },
+    ],
+    catalogue: [
+      { id: 'l1', name: 'Listing 1', kind: 'Kind A', unit: 'per unit', price_from: 100, capacity: 4, description: 'Listing 1 description', image_url: 'https://img.example.test/l1.png', active: true, sort_order: 1 },
+      { id: 'l2', name: 'Listing 2', kind: 'Kind B', price_from: 50, active: false, sort_order: 2 },
+      { id: 'l3', name: 'Listing 3', kind: 'Kind A', price_from: 80, active: true, sort_order: 3 },
+      { id: 'l4', name: 'Listing 4', kind: 'Kind B', price_from: 60, active: true, sort_order: 4 },
+    ],
+    claims: [
+      { id: 'k1', title: 'Claim 1', date: '2026-03-12', end_date: '2026-03-13', start_time: '18:00', status: 'active', party: 2 },
+      { id: 'k2', title: 'Claim 2', date: '2026-03-14', status: 'active', party: 3 },
+    ],
+  }
+}

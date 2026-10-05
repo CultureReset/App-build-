@@ -7,7 +7,9 @@
 // so each screen styles the blocks its own way.
 
 import { LINK_SCHEMES } from './values.js'
-import { BUTTON_STYLES, BUTTONS_STYLES, DETAILS_STYLES, FORM_STYLES, HEADING_LEVELS, IMAGES_STYLES, INPUT_TYPES, LIST_STYLES, TONES } from './blocks.js'
+import { BUTTON_STYLES, BUTTONS_STYLES, CALENDAR_STYLES, DETAILS_STYLES, FORM_STYLES, GALLERY_STYLES, HEADING_LEVELS, IMAGES_STYLES, INPUT_TYPES, KEY, LIST_STYLES, NAV_STYLES, TONES } from './blocks.js'
+import { contributedBlock } from './views/index.js'
+import { slug } from './view-helpers.js'
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 export function escapeHtml(value) {
@@ -55,15 +57,21 @@ export function renderHtml(blocks, options = {}) {
       ? `<a class="${className}" href="${escapeHtml(href)}" rel="noopener noreferrer nofollow ugc" target="_blank">${inner}</a>`
       : `<span class="${className}">${inner}</span>`
 
+  // A key from data (a button's or an entry's) reaches a class only slugged.
+  const keyClass = (name, key) => (typeof key === 'string' && KEY.test(key) ? ` ${prefix}-${name}-${slug(key)}` : '')
+  const anchorId = (id) => `${prefix}-${slug(id)}`
+
   const button = (b) => {
     const style = BUTTON_STYLES.includes(b.style) ? b.style : 'primary'
     const icon = b.icon ? `<span class="${prefix}-icon" aria-hidden="true">${escapeHtml(b.icon)}</span>` : ''
     const label = `<span class="${prefix}-label">${escapeHtml(b.label)}</span>`
     const note = b.note ? `<span class="${prefix}-note">${escapeHtml(b.note)}</span>` : ''
-    if (b.href) return link(b.href, `${icon}${label}${note}`, cls('button', style, BUTTON_STYLES))
+    const className = `${cls('button', style, BUTTON_STYLES)}${keyClass('key', b.key)}`
+    if (b.href) return link(b.href, `${icon}${label}${note}`, className)
     // Actions need a live screen; static HTML shows the label only.
-    return `<span class="${cls('button', style, BUTTON_STYLES)}" aria-disabled="true">${icon}${label}</span>`
+    return `<span class="${className}" aria-disabled="true">${icon}${label}</span>`
   }
+  const buttonRow = (list, className) => (list?.length ? `<div class="${className}">${list.map(button).join('')}</div>` : '')
 
   const field = (f, value, error, formId) => {
     const id = `${prefix}-${escapeHtml(formId)}-${escapeHtml(f.key)}`.replace(/[^A-Za-z0-9_-]/g, '-')
@@ -90,15 +98,114 @@ export function renderHtml(blocks, options = {}) {
     return `<label class="${cls('field', f.type, INPUT_TYPES)}" for="${id}"><span class="${prefix}-field-label">${escapeHtml(f.label)}</span>${control}${help}${err}</label>`
   }
 
+  const form = (b) => {
+    const target = typeof options.formAction === 'function' ? options.formAction(b.submit?.action, b) : null
+    const attrs = target ? ` method="post" action="${escapeHtml(target)}"` : ''
+    const parts = [`<form class="${cls('form', b.style, FORM_STYLES)}"${attrs}>`]
+    if (b.intro) parts.push(`<p class="${prefix}-form-intro">${escapeHtml(b.intro)}</p>`)
+    if (b.errors?._form) parts.push(`<p class="${prefix}-error" role="alert">${escapeHtml(b.errors._form)}</p>`)
+    for (const f of b.fields || []) parts.push(field(f, b.values?.[f.key], b.errors?.[f.key], b.id))
+    if (!b.readOnly) parts.push(`<button type="submit" class="${cls('button', 'primary', BUTTON_STYLES)}"${target ? '' : ' disabled'}>${escapeHtml(b.submit?.label || '')}</button>`)
+    parts.push('</form>')
+    return parts.join('')
+  }
+
+  const img = (it, className) => `<img${className ? ` class="${className}"` : ''} src="${escapeHtml(it.src)}" alt="${escapeHtml(it.alt || '')}" loading="lazy">`
+
+  // A list item: the card, or — with `detail` — a card that opens (<details>) on its full text and photo.
+  const listItem = (it) => {
+    const head = []
+    if (it.image && okSrc(it.image.src)) head.push(img(it.image, `${prefix}-item-image`))
+    head.push(`<span class="${prefix}-item-title">${escapeHtml(it.title)}</span>`)
+    if (it.badge) head.push(`<span class="${prefix}-item-badge">${escapeHtml(it.badge)}</span>`)
+    if (it.badges?.length) head.push(`<span class="${prefix}-item-badges">${it.badges.map((x) => `<span class="${prefix}-item-badge">${escapeHtml(x)}</span>`).join('')}</span>`)
+    if (it.value) head.push(`<span class="${prefix}-item-value">${escapeHtml(it.value)}</span>`)
+    if (it.subtitle) head.push(`<span class="${prefix}-item-subtitle">${escapeHtml(it.subtitle)}</span>`)
+    if (it.meta?.length) head.push(`<span class="${prefix}-item-meta">${it.meta.map(escapeHtml).join(' · ')}</span>`)
+    if (it.time) head.push(`<span class="${prefix}-item-time">${escapeHtml(it.time)}</span>`)
+    const body = it.body ? `<span class="${prefix}-item-body">${escapeHtml(it.body)}</span>` : ''
+    let inner
+    if (it.detail) {
+      const more = `${it.image && okSrc(it.image.src) ? img(it.image, `${prefix}-item-detail-image`) : ''}${body}`
+      inner = `<details class="${prefix}-item-detail"><summary class="${prefix}-item-card">${head.join('')}</summary><div class="${prefix}-item-more">${more}</div></details>`
+    } else {
+      inner = `<span class="${prefix}-item-card">${head.join('')}${body}</span>`
+    }
+    const tail = `${it.form ? `<div class="${prefix}-item-form">${form(it.form)}</div>` : ''}${buttonRow(it.actions, `${prefix}-item-actions`)}`
+    const className = `${prefix}-item${it.unavailable ? ` ${prefix}-item--unavailable` : ''}`
+    return `<li class="${className}">${it.href && !it.detail ? link(it.href, inner, `${prefix}-item-link`) : inner}${tail}</li>`
+  }
+
+  let galleries = 0
   const walk = (list, depth) => {
     for (const b of list || []) {
       switch (b.type) {
         case 'section': {
           const level = Math.min(6, base + depth)
-          out.push(`<section class="${cls('section')}">`)
-          if (b.title) out.push(`<h${level} class="${prefix}-section-title">${escapeHtml(b.title)}</h${level}>`)
+          out.push(`<section class="${cls('section')}"${typeof b.id === 'string' ? ` id="${anchorId(b.id)}"` : ''}>`)
+          if (b.title || b.actions?.length) {
+            out.push(`<div class="${prefix}-section-head">`)
+            if (b.title) out.push(`<h${level} class="${prefix}-section-title">${escapeHtml(b.title)}</h${level}>`)
+            out.push(buttonRow(b.actions, `${prefix}-section-actions`))
+            out.push('</div>')
+          }
           walk(b.blocks, depth + 1)
           out.push('</section>')
+          break
+        }
+        case 'nav':
+          out.push(`<nav class="${cls('nav', b.style, NAV_STYLES)}">`)
+          for (const it of b.items || []) out.push(`<a class="${prefix}-nav-item" href="#${anchorId(it.target)}">${escapeHtml(it.label)}</a>`)
+          out.push('</nav>')
+          break
+        case 'gallery': {
+          // The lightbox is :target based (styles.css), so it works without a script.
+          const g = galleries++
+          const items = (b.items || []).filter((it) => okSrc(it.src))
+          out.push(`<ul class="${cls('gallery', b.style, GALLERY_STYLES)}">`)
+          items.forEach((it, i) => {
+            const id = `${prefix}-lb-${g}-${i}`
+            const cap = it.caption ? `<figcaption>${escapeHtml(it.caption)}</figcaption>` : ''
+            out.push(`<li class="${prefix}-gallery-item${it.cover ? ` ${prefix}-gallery-item--cover` : ''}"><a class="${prefix}-gallery-open" href="#${id}"><figure>${img(it)}${cap}</figure></a>${buttonRow(it.actions, `${prefix}-item-actions`)}</li>`)
+          })
+          out.push('</ul>')
+          items.forEach((it, i) => {
+            const id = `${prefix}-lb-${g}-${i}`
+            const cap = it.caption ? `<figcaption>${escapeHtml(it.caption)}</figcaption>` : ''
+            const prev = `<a class="${prefix}-lightbox-prev" href="#${prefix}-lb-${g}-${(i + items.length - 1) % items.length}" aria-label="previous">‹</a>`
+            const next = `<a class="${prefix}-lightbox-next" href="#${prefix}-lb-${g}-${(i + 1) % items.length}" aria-label="next">›</a>`
+            const open = it.href ? link(it.href, escapeHtml(it.href), `${prefix}-lightbox-link`) : ''
+            out.push(`<div class="${prefix}-lightbox" id="${id}" role="dialog"><a class="${prefix}-lightbox-close" href="#${prefix}-lb-${g}" aria-label="close">×</a>${prev}<figure>${img(it)}${cap}${open}</figure>${next}</div>`)
+          })
+          out.push(`<span id="${prefix}-lb-${g}"></span>`)
+          break
+        }
+        case 'calendar': {
+          const style = CALENDAR_STYLES.includes(b.style) ? b.style : 'list'
+          out.push(`<div class="${cls('calendar', style, CALENDAR_STYLES)}">`)
+          if (b.title) out.push(`<p class="${prefix}-calendar-title">${escapeHtml(b.title)}</p>`)
+          if (style !== 'list') out.push(`<ol class="${prefix}-weekdays">${(b.weekdays || []).map((w) => `<li class="${prefix}-weekday">${escapeHtml(w)}</li>`).join('')}</ol>`)
+          out.push(`<ol class="${prefix}-days">`)
+          ;(b.days || []).forEach((d, i) => {
+            const col = i === 0 && style === 'month' && Number.isInteger(d.weekday) && d.weekday >= 0 && d.weekday <= 6 ? ` style="grid-column-start: ${d.weekday + 1}"` : ''
+            const cls2 = `${prefix}-day${d.today ? ` ${prefix}-day--today` : ''}${d.entries?.length ? ` ${prefix}-day--busy` : ''}`
+            out.push(`<li class="${cls2}"${col}><span class="${prefix}-day-label">${escapeHtml(d.label)}</span>`)
+            if (d.entries?.length) {
+              out.push(`<ul class="${prefix}-entries">`)
+              for (const e of d.entries) {
+                const parts = []
+                if (e.time) parts.push(`<span class="${prefix}-entry-time">${escapeHtml(e.time)}</span>`)
+                if (e.title) parts.push(`<span class="${prefix}-entry-title">${escapeHtml(e.title)}</span>`)
+                if (e.status) parts.push(`<span class="${prefix}-entry-status">${escapeHtml(e.status)}</span>`)
+                if (typeof e.capacity === 'number') parts.push(`<span class="${prefix}-entry-capacity">${escapeHtml(e.capacity)}</span>`)
+                const inner = parts.join('')
+                out.push(`<li class="${prefix}-entry${keyClass('entry', e.key)}">${e.href ? link(e.href, inner, `${prefix}-entry-link`) : inner}${buttonRow(e.actions, `${prefix}-item-actions`)}</li>`)
+              }
+              out.push('</ul>')
+            }
+            out.push(`${buttonRow(d.actions, `${prefix}-day-actions`)}</li>`)
+          })
+          out.push('</ol></div>')
           break
         }
         case 'heading': {
@@ -120,19 +227,7 @@ export function renderHtml(blocks, options = {}) {
           break
         case 'list': {
           out.push(`<ul class="${cls('list', b.style, LIST_STYLES)}">`)
-          for (const it of b.items || []) {
-            const parts = []
-            if (it.image && okSrc(it.image.src)) parts.push(`<img class="${prefix}-item-image" src="${escapeHtml(it.image.src)}" alt="${escapeHtml(it.image.alt || '')}" loading="lazy">`)
-            parts.push(`<span class="${prefix}-item-title">${escapeHtml(it.title)}</span>`)
-            if (it.badge) parts.push(`<span class="${prefix}-item-badge">${escapeHtml(it.badge)}</span>`)
-            if (it.value) parts.push(`<span class="${prefix}-item-value">${escapeHtml(it.value)}</span>`)
-            if (it.subtitle) parts.push(`<span class="${prefix}-item-subtitle">${escapeHtml(it.subtitle)}</span>`)
-            if (it.meta?.length) parts.push(`<span class="${prefix}-item-meta">${it.meta.map(escapeHtml).join(' · ')}</span>`)
-            if (it.body) parts.push(`<span class="${prefix}-item-body">${escapeHtml(it.body)}</span>`)
-            if (it.time) parts.push(`<span class="${prefix}-item-time">${escapeHtml(it.time)}</span>`)
-            const inner = parts.join('')
-            out.push(`<li class="${prefix}-item">${it.href ? link(it.href, inner, `${prefix}-item-link`) : inner}</li>`)
-          }
+          for (const it of b.items || []) out.push(listItem(it))
           out.push('</ul>')
           break
         }
@@ -189,20 +284,18 @@ export function renderHtml(blocks, options = {}) {
             out.push(`<div class="${cls('embed')}"><iframe src="${escapeHtml(b.src)}" title="${escapeHtml(b.title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`)
           }
           break
-        case 'form': {
-          const target = typeof options.formAction === 'function' ? options.formAction(b.submit?.action, b) : null
-          const attrs = target ? ` method="post" action="${escapeHtml(target)}"` : ''
-          out.push(`<form class="${cls('form', b.style, FORM_STYLES)}"${attrs}>`)
-          if (b.intro) out.push(`<p class="${prefix}-form-intro">${escapeHtml(b.intro)}</p>`)
-          if (b.errors?._form) out.push(`<p class="${prefix}-error" role="alert">${escapeHtml(b.errors._form)}</p>`)
-          for (const f of b.fields || []) out.push(field(f, b.values?.[f.key], b.errors?.[f.key], b.id))
-          if (!b.readOnly) out.push(`<button type="submit" class="${cls('button', 'primary', BUTTON_STYLES)}"${target ? '' : ' disabled'}>${escapeHtml(b.submit?.label || '')}</button>`)
-          out.push('</form>')
+        case 'form':
+          out.push(form(b))
+          break
+        default: {
+          // A template's own block draws through its module; anything else is
+          // skipped, so an older screen survives a newer engine.
+          const contributed = contributedBlock(b.type)
+          if (contributed) {
+            out.push(contributed.html(b, { prefix, cls, escape: escapeHtml, okSrc, okHref, link, button, buttonRow, img, form, headingTag: `h${Math.min(6, base + depth)}` }))
+          }
           break
         }
-        default:
-          // Unknown block types are skipped, so an older screen survives a newer engine.
-          break
       }
     }
   }

@@ -18,9 +18,13 @@
 // `options` copy, locale, currency, now, embeds (see README)
 
 import { checkValues, blankValues, safeHref, safeImage, settingsFields, settingsWithDefaults } from './values.js'
-import { formatValue, optionList, relativeTime, resolveFormat } from './format.js'
+import { optionList, relativeTime, resolveFormat } from './format.js'
 import { copyWith, fill } from './copy.js'
 import { sourceResource } from './manifest.js'
+import { viewModule } from './views/index.js'
+import {
+  rowsOf, fieldOf, display, rowId, ordered, newestFirst, visible, grouped, settingText, formFields, section, slot, rawSlot, pick,
+} from './view-helpers.js'
 
 const OWNER_KINDS = ['dashboard', 'settings']
 const PUBLIC_KINDS = ['public']
@@ -46,70 +50,12 @@ function context(manifest, settings, data, actions = {}, options = {}) {
     }
     lookupsBySource[key] = lookups
   }
-  return {
+  const ctx = {
     manifest, sources, granted, settings: resolvedSettings, data: data || {}, actions, options, copy,
     format, lookupsBySource, now: options.now ?? Date.now(),
   }
-}
-
-/* ── helpers ────────────────────────────────────────────────────────────── */
-
-function rowsOf(ctx, key) {
-  const rows = ctx.data[key]
-  return Array.isArray(rows) ? rows.filter((r) => r && typeof r === 'object') : []
-}
-
-function fieldOf(source, key) {
-  return (source.fields || []).find((f) => f.key === key)
-}
-
-function display(ctx, sourceKey, field, row) {
-  // Owner-only fields are never drawn for a visitor, whichever slot (bound or
-  // defaulted from the source's title) led here.
-  if (!field || (ctx.visitor && field.ownerOnly)) return ''
-  return formatValue(field, row[field.key], { ...ctx.format, copy: ctx.copy, lookups: ctx.lookupsBySource[sourceKey] })
-}
-
-function rowId(row, index) {
-  return row.id !== undefined && row.id !== null ? String(row.id) : `row-${index}`
-}
-
-function ordered(source, rows) {
-  if (!source.order) return rows
-  return [...rows].sort((a, b) => (Number(a[source.order]) || 0) - (Number(b[source.order]) || 0))
-}
-
-function newestFirst(rows) {
-  return [...rows].sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')))
-}
-
-/** Rows with the source's visibility flag off never reach a visitor. */
-function visible(source, rows) {
-  if (!source.visibleWhen) return rows
-  return rows.filter((r) => r[source.visibleWhen] !== false && r[source.visibleWhen] !== 'false')
-}
-
-/** Split rows into the group field's options, in option order; leftovers last. */
-function grouped(ctx, sourceKey, source, rows) {
-  const field = source.group ? fieldOf(source, source.group) : null
-  if (!field) return [{ key: '', label: '', rows }]
-  const options = optionList(field, ctx.lookupsBySource[sourceKey])
-  const groups = options
-    .map((o) => ({ key: String(o.value), label: o.label, rows: rows.filter((r) => String(r[field.key]) === String(o.value)) }))
-    .filter((g) => g.rows.length)
-  const known = new Set(options.map((o) => String(o.value)))
-  const rest = rows.filter((r) => !known.has(String(r[field.key])))
-  if (rest.length) groups.push({ key: '__other', label: groups.length ? ctx.copy.other : '', rows: rest })
-  return groups
-}
-
-function settingText(ctx, ref) {
-  if (typeof ref === 'string') return ref
-  if (ref && typeof ref === 'object' && ref.setting) {
-    const v = ctx.settings[ref.setting]
-    return typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v)
-  }
-  return ''
+  ctx.can = (source) => abilities(ctx, source)
+  return ctx
 }
 
 /** What this viewer may do to a source's rows. */
@@ -122,23 +68,6 @@ function abilities(ctx, source) {
     // A read-only binding never writes, whatever the install was granted.
     write: ctx.granted.has(`${resource}:write`) && !(binding && binding.access !== 'read-write'),
   }
-}
-
-function formFields(source, { visitor }, lookups) {
-  return (source.fields || [])
-    .filter((f) => !f.readOnly && !(visitor && f.ownerOnly))
-    .map((f) => {
-      const out = { key: f.key, label: f.label, type: f.type, required: Boolean(f.required) }
-      for (const k of ['help', 'placeholder', 'min', 'max', 'maxLength']) if (f[k] !== undefined) out[k] = f[k]
-      if (f.type === 'select') out.options = optionList(f, lookups).map((o) => ({ value: String(o.value), label: o.label }))
-      return out
-    })
-}
-
-function section(title, blocks) {
-  const out = { type: 'section', blocks }
-  if (title) out.title = title
-  return out
 }
 
 /* ── owner views ────────────────────────────────────────────────────────── */
@@ -211,12 +140,6 @@ function collectionView(ctx, view) {
   return section(title, blocks)
 }
 
-function pick(row, fields) {
-  const out = {}
-  for (const f of fields || []) out[f.key] = row[f.key] ?? (f.type === 'boolean' ? false : null)
-  return out
-}
-
 function settingsView(ctx, view) {
   const fields = settingsFields(ctx.manifest)
   if (!fields.length) return null
@@ -241,17 +164,6 @@ function settingsView(ctx, view) {
 }
 
 /* ── public views ───────────────────────────────────────────────────────── */
-
-function slot(ctx, sourceKey, source, view, name, row) {
-  const key = view.fields?.[name]
-  return key ? display(ctx, sourceKey, fieldOf(source, key), row) : ''
-}
-
-function rawSlot(view, name, row) {
-  const key = view.fields?.[name]
-  const v = key ? row[key] : undefined
-  return typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v)
-}
 
 function listView(ctx, view, source, rows) {
   const style = view.style || 'list'
@@ -422,6 +334,27 @@ function publicView(ctx, view, surface) {
 
 /* ── entry points ───────────────────────────────────────────────────────── */
 
+/**
+ * A template (views/<type>.js): the engine finds the source, checks access,
+ * orders and (for a visitor) filters the rows, and hands the module the rest.
+ * The module returns the blocks of one section.
+ */
+function templateView(ctx, view, surface, mod, isPublic) {
+  if (mod.surface === 'owner' && isPublic) return null
+  const source = ctx.sources[view.source]
+  if (!source) return null
+  const can = ctx.can(source)
+  const title = view.heading ?? (isPublic ? surface.title || '' : source.label)
+  if (!can.read) {
+    if (isPublic) return null
+    return section(title, [{ type: 'notice', tone: 'warning', text: fill(ctx.copy.noAccess, { resource: sourceResource(ctx.manifest, source) }) }])
+  }
+  const allRows = ordered(source, rowsOf(ctx, view.source))
+  const rows = isPublic ? visible(source, allRows) : allRows
+  const blocks = mod.render(ctx, view, { sourceKey: view.source, source, rows, allRows, surface, isPublic }) || []
+  return section(title, blocks.length ? blocks : [{ type: 'empty', text: view.emptyText || ctx.copy.empty }])
+}
+
 function renderViews(ctx, surface) {
   const name = String(surface.path || '').slice(1)
   const views = ctx.manifest.ui?.views?.[name] || []
@@ -430,7 +363,9 @@ function renderViews(ctx, surface) {
   const out = []
   for (const view of views) {
     let block = null
-    if (view.type === 'collection' && !isPublic) block = collectionView(ctx, view)
+    const mod = viewModule(view.type)
+    if (mod) block = templateView(isPublic ? vctx : ctx, view, surface, mod, isPublic)
+    else if (view.type === 'collection' && !isPublic) block = collectionView(ctx, view)
     else if (view.type === 'settings' && !isPublic) block = settingsView(ctx, view)
     else if (view.type !== 'collection' && view.type !== 'settings') block = publicView(vctx, view, surface)
     if (block) out.push(block)

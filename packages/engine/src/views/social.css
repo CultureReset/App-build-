@@ -1,0 +1,11 @@
+/* Template: social — tokens --ng-social-* (an icon per network: .ng-key-<slug of its label> { --ng-icon: '…' }) */
+.ng-blocks {
+  --ng-social-gap: 0.5rem;
+  --ng-social-size: 2.5rem;
+  --ng-social-radius: 50%;
+  --ng-social-bg: var(--ng-surface);
+  --ng-social-color: inherit;
+  --ng-social-justify: start;
+}
+.ng-buttons--icons:not(:has(.ng-key-call)) { gap: var(--ng-social-gap); justify-content: var(--ng-social-justify); }
+.ng-buttons--icons:not(:has(.ng-key-call)) .ng-button { width: var(--ng-social-size); height: var(--ng-social-size); border-radius: var(--ng-social-radius); background: var(--ng-social-bg); color: var(--ng-social-color); border-color: transparent; }

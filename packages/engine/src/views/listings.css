@@ -1,0 +1,37 @@
+/* Template: listings — tokens --ng-listings-* */
+.ng-blocks {
+  --ng-listings-gap: 0.75rem;
+  --ng-listings-min: 14rem;
+  --ng-listings-card-padding: 0;
+  --ng-listings-card-radius: var(--ng-radius);
+  --ng-listings-card-bg: transparent;
+  --ng-listings-card-border: var(--ng-border);
+  --ng-listings-image-ratio: 4 / 3;
+  --ng-listings-image-radius: var(--ng-radius) var(--ng-radius) 0 0;
+  --ng-listings-title-size: 1rem;
+  --ng-listings-title-weight: 600;
+  --ng-listings-price-size: 1rem;
+  --ng-listings-price-weight: 600;
+  --ng-listings-price-color: inherit;
+  --ng-listings-badge-bg: var(--ng-badge-bg);
+  --ng-listings-badge-color: var(--ng-badge-color);
+  --ng-listings-badge-radius: var(--ng-badge-radius);
+  --ng-listings-meta-color: var(--ng-muted);
+  --ng-listings-hidden-opacity: 0.5;
+}
+.ng-list--listings { grid-template-columns: repeat(auto-fill, minmax(var(--ng-listings-min), 1fr)); gap: var(--ng-listings-gap); }
+.ng-list--listings-rows { gap: var(--ng-listings-gap); }
+.ng-list--listings .ng-item, .ng-list--listings-rows .ng-item { padding: var(--ng-listings-card-padding); border: 1px solid var(--ng-listings-card-border); border-radius: var(--ng-listings-card-radius); background: var(--ng-listings-card-bg); overflow: hidden; }
+.ng-list--listings .ng-item-card, .ng-list--listings-rows .ng-item-card { gap: 0.25rem; }
+.ng-list--listings .ng-item-card > :not(.ng-item-image), .ng-list--listings-rows .ng-item-card > :not(.ng-item-image) { margin: 0 0.75rem; }
+.ng-list--listings .ng-item-card > :last-child:not(.ng-item-image), .ng-list--listings-rows .ng-item-card > :last-child:not(.ng-item-image) { margin-bottom: 0.75rem; }
+.ng-list--listings .ng-item-image { aspect-ratio: var(--ng-listings-image-ratio); border-radius: var(--ng-listings-image-radius); }
+.ng-list--listings-rows .ng-item-card { grid-template-columns: 7rem 1fr; }
+.ng-list--listings-rows .ng-item-image { grid-row: 1 / span 6; aspect-ratio: 1 / 1; border-radius: 0; }
+.ng-list--listings .ng-item-title, .ng-list--listings-rows .ng-item-title { font-size: var(--ng-listings-title-size); font-weight: var(--ng-listings-title-weight); margin-top: 0.5rem; }
+.ng-list--listings .ng-item-value, .ng-list--listings-rows .ng-item-value { font-size: var(--ng-listings-price-size); font-weight: var(--ng-listings-price-weight); color: var(--ng-listings-price-color); }
+.ng-list--listings .ng-item-badge, .ng-list--listings-rows .ng-item-badge { background: var(--ng-listings-badge-bg); color: var(--ng-listings-badge-color); border-radius: var(--ng-listings-badge-radius); }
+.ng-list--listings .ng-item-meta, .ng-list--listings-rows .ng-item-meta { color: var(--ng-listings-meta-color); }
+.ng-list--listings .ng-item-more, .ng-list--listings .ng-item-form, .ng-list--listings .ng-item-actions { padding: 0 0.75rem 0.75rem; }
+.ng-list--listings .ng-item--unavailable .ng-item-card { opacity: var(--ng-listings-hidden-opacity); }
+.ng-list--listings .ng-item--unavailable .ng-item-title { text-decoration: none; }

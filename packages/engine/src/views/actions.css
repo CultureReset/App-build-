@@ -1,0 +1,13 @@
+/* Template: actions — tokens --ng-actions-* (icons per key come from the owner's sheet: .ng-key-call { --ng-icon: '…' }) */
+.ng-blocks {
+  --ng-actions-gap: 0.5rem;
+  --ng-actions-justify: start;
+  --ng-actions-icon-size: 1.25rem;
+  --ng-actions-button-radius: var(--ng-radius);
+  --ng-actions-button-padding: 0.55rem 0.9rem;
+}
+.ng-section > .ng-buttons:has(.ng-key-call), .ng-section > .ng-buttons:has(.ng-key-email), .ng-section > .ng-buttons:has(.ng-key-directions), .ng-section > .ng-buttons:has(.ng-key-book), .ng-section > .ng-buttons:has(.ng-key-website), .ng-section > .ng-buttons:has(.ng-key-sms) {
+  gap: var(--ng-actions-gap); justify-content: var(--ng-actions-justify);
+}
+.ng-key-call, .ng-key-sms, .ng-key-email, .ng-key-website, .ng-key-book, .ng-key-directions { border-radius: var(--ng-actions-button-radius); padding: var(--ng-actions-button-padding); }
+.ng-buttons--icons .ng-key-call::before, .ng-buttons--icons .ng-key-sms::before, .ng-buttons--icons .ng-key-email::before, .ng-buttons--icons .ng-key-website::before, .ng-buttons--icons .ng-key-book::before, .ng-buttons--icons .ng-key-directions::before { font-size: var(--ng-actions-icon-size); }

@@ -1,0 +1,21 @@
+/* Template: availability — tokens --ng-availability-*, mapped onto the shared calendar block */
+.ng-blocks {
+  --ng-availability-gap: var(--ng-calendar-gap);
+  --ng-availability-day-min: var(--ng-calendar-day-min);
+  --ng-availability-day-radius: var(--ng-calendar-day-radius);
+  --ng-availability-day-bg: var(--ng-calendar-day-bg);
+  --ng-availability-day-border: var(--ng-calendar-day-border);
+  --ng-availability-today-border: var(--ng-calendar-today-border);
+  --ng-availability-busy-bg: var(--ng-calendar-busy-bg);
+  --ng-availability-entry-bg: var(--ng-calendar-entry-bg);
+  --ng-availability-entry-color: var(--ng-calendar-entry-color);
+  --ng-availability-entry-radius: var(--ng-calendar-entry-radius);
+  --ng-availability-label-size: var(--ng-calendar-label-size);
+  --ng-availability-weekday-color: var(--ng-calendar-weekday-color);
+}
+.ng-calendar {
+  --ng-calendar-gap: var(--ng-availability-gap); --ng-calendar-day-min: var(--ng-availability-day-min); --ng-calendar-day-radius: var(--ng-availability-day-radius);
+  --ng-calendar-day-bg: var(--ng-availability-day-bg); --ng-calendar-day-border: var(--ng-availability-day-border); --ng-calendar-today-border: var(--ng-availability-today-border);
+  --ng-calendar-busy-bg: var(--ng-availability-busy-bg); --ng-calendar-entry-bg: var(--ng-availability-entry-bg); --ng-calendar-entry-color: var(--ng-availability-entry-color);
+  --ng-calendar-entry-radius: var(--ng-availability-entry-radius); --ng-calendar-label-size: var(--ng-availability-label-size); --ng-calendar-weekday-color: var(--ng-availability-weekday-color);
+}

@@ -1,0 +1,37 @@
+/* Template: profile — tokens --ng-profile-* */
+.ng-blocks {
+  --ng-profile-gap: 0.75rem;
+  --ng-profile-padding: 1rem;
+  --ng-profile-radius: var(--ng-radius);
+  --ng-profile-bg: transparent;
+  --ng-profile-border: transparent;
+  --ng-profile-image-size: 4.5rem;
+  --ng-profile-image-radius: 50%;
+  --ng-profile-cover-height: 10rem;
+  --ng-profile-cover-radius: var(--ng-radius);
+  --ng-profile-name-size: 1.4rem;
+  --ng-profile-name-weight: 700;
+  --ng-profile-tagline-size: 1rem;
+  --ng-profile-tagline-color: var(--ng-muted);
+  --ng-profile-text-size: 0.95rem;
+  --ng-profile-location-color: var(--ng-muted);
+  --ng-profile-actions-gap: 0.5rem;
+  --ng-profile-align: start;
+}
+.ng-profile { display: grid; gap: var(--ng-profile-gap); padding: var(--ng-profile-padding); border: 1px solid var(--ng-profile-border); border-radius: var(--ng-profile-radius); background: var(--ng-profile-bg); }
+.ng-profile-cover { width: 100%; height: var(--ng-profile-cover-height); object-fit: cover; border-radius: var(--ng-profile-cover-radius); }
+.ng-profile-body { display: grid; gap: var(--ng-profile-gap); justify-items: var(--ng-profile-align); text-align: var(--ng-profile-align); }
+.ng-profile-image { width: var(--ng-profile-image-size); height: var(--ng-profile-image-size); object-fit: cover; border-radius: var(--ng-profile-image-radius); }
+.ng-profile-text { display: grid; gap: 0.25rem; }
+.ng-profile-text > * { margin: 0; }
+.ng-profile-name { font-size: var(--ng-profile-name-size); font-weight: var(--ng-profile-name-weight); }
+.ng-profile-tagline { font-size: var(--ng-profile-tagline-size); color: var(--ng-profile-tagline-color); }
+.ng-profile-location { color: var(--ng-profile-location-color); font-size: var(--ng-profile-text-size); }
+.ng-profile-description { font-size: var(--ng-profile-text-size); }
+.ng-profile-actions { display: flex; flex-wrap: wrap; gap: var(--ng-profile-actions-gap); }
+.ng-profile--banner { --ng-profile-align: center; }
+.ng-profile--banner .ng-profile-cover + .ng-profile-body .ng-profile-image { margin-top: calc(var(--ng-profile-image-size) / -2 - var(--ng-profile-gap)); }
+.ng-profile--compact { --ng-profile-padding: 0; --ng-profile-image-size: 3rem; --ng-profile-name-size: 1.1rem; }
+.ng-profile--compact .ng-profile-body { grid-template-columns: auto 1fr; align-items: center; }
+.ng-profile--compact .ng-profile-actions { grid-column: 1 / -1; }
+.ng-profile--compact .ng-profile-cover, .ng-profile--compact .ng-profile-description { display: none; }

@@ -1,0 +1,13 @@
+/* Template: gallery — tokens --ng-gallery-*. They also size the shared gallery block
+   media-manager draws (styles.css), which falls back to the same values without this sheet. */
+.ng-blocks {
+  --ng-gallery-gap: var(--ng-gap);
+  --ng-gallery-min: 10rem;
+  --ng-gallery-ratio: 1 / 1;
+  --ng-gallery-radius: var(--ng-radius);
+  --ng-gallery-caption-size: 0.85rem;
+  --ng-gallery-caption-color: var(--ng-muted);
+  --ng-gallery-carousel-width: 70vw;
+  --ng-gallery-lightbox-bg: rgba(0, 0, 0, 0.9);
+  --ng-gallery-lightbox-color: #fff;
+}

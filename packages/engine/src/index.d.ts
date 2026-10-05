@@ -57,8 +57,14 @@ export interface Binding { contract: Contract; access: BindingAccess; fieldMap?:
 export type ActionKind = 'read' | 'create' | 'update'
 export interface AgentAction { id: string; summary: string; kind: ActionKind; binding?: string; table?: string }
 
+export type CoreViewType = 'collection' | 'settings' | 'list' | 'links' | 'images' | 'details' | 'embed' | 'form' | 'feed' | 'text'
+/** Templates (DECISIONS #51), one module each under src/views/. */
+export type TemplateViewType =
+  | 'profile' | 'actions' | 'social' | 'gallery' | 'menu' | 'listings' | 'availability'
+  | 'profile-editor' | 'media-manager' | 'menu-editor' | 'listing-manager' | 'availability-calendar'
+
 export interface View {
-  type: 'collection' | 'settings' | 'list' | 'links' | 'images' | 'details' | 'embed' | 'form' | 'feed' | 'text'
+  type: CoreViewType | TemplateViewType | (string & {})
   source?: string
   heading?: string
   style?: string
@@ -103,7 +109,39 @@ export declare const SCHEMA_VERSION: 1
 export declare const ENGINE_RUNTIME: 'engine'
 export declare const PERMISSION: RegExp
 export declare const FIELD_TYPES: FieldType[]
-export declare const VIEW_TYPES: Record<string, { slots: string[]; multi?: string[]; styles?: string[]; owner?: boolean; writes?: boolean; noSource?: boolean }>
+export interface ViewSpec { slots: string[]; multi?: string[]; styles?: string[]; owner?: boolean; writes?: boolean; noSource?: boolean; required?: string[]; defaultSlot?: string; slotTypes?: Record<string, FieldType>; single?: boolean; template?: boolean }
+export declare const VIEW_TYPES: Record<string, ViewSpec>
+export declare const CORE_VIEW_TYPES: Record<CoreViewType, ViewSpec>
+
+/* templates (src/views/index.js) */
+export interface TemplateEnv { sourceKey: string; source: Source; rows: Record<string, unknown>[]; allRows: Record<string, unknown>[]; surface: NonNullable<Manifest['surfaces']>[number]; isPublic: boolean }
+export interface RenderContext {
+  manifest: Manifest; sources: Record<string, Source>; granted: Set<string>; settings: Record<string, unknown>; data: Rows
+  actions: ActionState; options: RenderOptions; copy: Record<string, string>; format: { currency?: string; locale?: string }
+  lookupsBySource: Record<string, Record<string, FieldOption[]>>; now: number; visitor?: boolean
+  can(source: Source): { read: boolean; write: boolean }
+}
+export interface BlockDrawer {
+  check(block: Record<string, unknown>, path: string, out: string[], helpers: { checkButton: (b: unknown, path: string, out: string[]) => void; checkButtons: (list: unknown, path: string, out: string[]) => void; checkBlocks: (blocks: unknown, path: string, out: string[]) => string[] }): void
+  html(block: Record<string, unknown>, helpers: Record<string, unknown>): string
+  react(block: Record<string, unknown>, helpers: Record<string, unknown>): unknown
+}
+export interface ViewModule {
+  name: string
+  surface: 'public' | 'owner'
+  summary: string
+  spec: { slots: string[]; multi?: string[]; styles?: string[]; required?: string[]; defaultSlot?: string; slotTypes?: Record<string, FieldType>; single?: boolean }
+  tokens: string[]
+  check?(view: View, ctx: { fields: Field[]; source: Source; isPublic: boolean; add: (slot: string, message: string) => void }): void
+  render(ctx: RenderContext, view: View, env: TemplateEnv): Block[]
+  blocks?: Record<string, BlockDrawer>
+}
+export declare function registerView(mod: ViewModule): ViewModule
+export declare function unregisterView(name: string): boolean
+export declare function viewModule(name: string): ViewModule | null
+export declare function viewModules(): ViewModule[]
+export declare function checkViewModule(mod: unknown): string[]
+export declare function templateSpecs(): Record<string, ViewSpec>
 export declare const SURFACE_KINDS: string[]
 export declare const CONTRACT_FAMILIES: Readonly<Record<ContractFamily, string>>
 export declare const CONTRACTS: readonly Contract[]
@@ -128,35 +166,44 @@ export declare function configKeys(manifest: unknown): string[]
 /* blocks */
 export type Action =
   | { type: 'record.create'; source: string }
-  | { type: 'record.update'; source: string; id: string }
+  | { type: 'record.update'; source: string; id: string; /** a quick partial update from a button (no form) */ values?: Record<string, unknown> }
   | { type: 'record.delete'; source: string; id: string }
   | { type: 'record.move'; source: string; id: string; direction: 'up' | 'down' }
   | { type: 'settings.save' }
   | { type: 'form.submit'; source: string }
-  | { type: 'view.new'; source: string }
+  | { type: 'view.new'; source: string; /** values the form opens with */ values?: Record<string, unknown> }
   | { type: 'view.edit'; source: string; id: string }
   | { type: 'view.cancel'; source?: string }
 
-export interface ButtonBlock { type?: 'button'; label: string; icon?: string; note?: string; style?: 'primary' | 'secondary' | 'danger' | 'ghost'; href?: string; action?: Action; disabled?: boolean }
+export interface ButtonBlock { type?: 'button'; label: string; icon?: string; note?: string; style?: 'primary' | 'secondary' | 'danger' | 'ghost'; href?: string; action?: Action; disabled?: boolean; /** a stylesheet hook: .ng-key-<key> */ key?: string }
 export interface FormField { key: string; label: string; type: FieldType | 'secret'; required?: boolean; help?: string; placeholder?: string; options?: { value: string; label: string }[]; min?: number; max?: number; maxLength?: number }
-export interface ListItem { id?: string; title: string; subtitle?: string; body?: string; value?: string; badge?: string; meta?: string[]; image?: { src: string; alt: string }; href?: string; time?: string; actions?: ButtonBlock[] }
+export interface FormBlock { type: 'form'; id: string; fields: FormField[]; values: Record<string, unknown>; errors?: Record<string, string>; submit: { label: string; action: Action }; cancel?: ButtonBlock; intro?: string; style?: 'feature'; readOnly?: boolean }
+export interface ListItem { id?: string; title: string; subtitle?: string; body?: string; value?: string; badge?: string; badges?: string[]; meta?: string[]; image?: { src: string; alt: string }; href?: string; time?: string; actions?: ButtonBlock[]; /** drawn struck through / dimmed (sold out, hidden) */ unavailable?: boolean; /** the card opens on its full text and photo */ detail?: boolean; /** an inline edit inside the card */ form?: FormBlock }
+export interface GalleryItem { id?: string; src: string; alt: string; caption?: string; cover?: boolean; href?: string; actions?: ButtonBlock[] }
+export interface CalendarEntry { id?: string; title?: string; time?: string; status?: string; key?: string; capacity?: number; href?: string; actions?: ButtonBlock[] }
+export interface CalendarDay { date: string; label: string; weekday: number; today?: boolean; entries: CalendarEntry[]; actions?: ButtonBlock[] }
 
 export type Block =
-  | { type: 'section'; title?: string; blocks: Block[] }
+  | { type: 'section'; title?: string; /** an anchor a nav may target */ id?: string; actions?: ButtonBlock[]; blocks: Block[] }
+  | { type: 'nav'; style: 'anchors' | 'filter'; items: { label: string; target: string }[] }
+  | { type: 'gallery'; style: 'grid' | 'carousel'; items: GalleryItem[] }
+  | { type: 'calendar'; style: 'list' | 'month' | 'week'; title?: string; weekdays: string[]; days: CalendarDay[] }
+  | { type: 'profile'; style?: 'card' | 'banner' | 'compact'; name: string; tagline?: string; description?: string; location?: string; image?: { src: string; alt: string }; cover?: { src: string; alt: string }; actions?: ButtonBlock[] }
   | { type: 'heading'; text: string; level: 1 | 2 | 3 }
   | { type: 'text' | 'notice' | 'empty'; text: string; tone?: 'default' | 'muted' | 'success' | 'warning' | 'danger' }
-  | { type: 'list'; style: 'list' | 'cards' | 'grid' | 'feed'; items: ListItem[] }
+  | { type: 'list'; style: 'list' | 'cards' | 'grid' | 'feed' | 'menu' | 'menu-compact' | 'listings' | 'listings-rows'; items: ListItem[] }
   | { type: 'table'; columns: { key: string; label: string }[]; rows: { id: string; cells: Record<string, string>; actions?: ButtonBlock[] }[]; empty?: string }
   | { type: 'image'; src: string; alt: string; caption?: string; href?: string }
   | { type: 'images'; style: 'grid' | 'strip' | 'feature'; items: { src: string; alt: string; caption?: string; href?: string }[] }
   | (ButtonBlock & { type: 'button' })
   | { type: 'buttons'; style: 'stack' | 'inline' | 'grid' | 'icons'; items: ButtonBlock[] }
-  | { type: 'form'; id: string; fields: FormField[]; values: Record<string, unknown>; errors?: Record<string, string>; submit: { label: string; action: Action }; cancel?: ButtonBlock; intro?: string; style?: 'feature'; readOnly?: boolean }
+  | FormBlock
   | { type: 'details'; style: 'accordion' | 'list'; items: { summary: string; body: string }[] }
   | { type: 'embed'; src: string; title: string }
   | { type: 'divider' }
 
 export declare const BLOCK_TYPES: Block['type'][]
+export declare const CORE_BLOCK_TYPES: Block['type'][]
 export declare const ACTION_TYPES: Action['type'][]
 export declare const BUTTON_STYLES: string[]
 export declare const INPUT_TYPES: string[]

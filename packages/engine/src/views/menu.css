@@ -1,0 +1,44 @@
+/* Template: menu — tokens --ng-menu-* */
+.ng-blocks {
+  --ng-menu-gap: 0.75rem;
+  --ng-menu-card-padding: 0.75rem;
+  --ng-menu-card-radius: var(--ng-radius);
+  --ng-menu-card-bg: transparent;
+  --ng-menu-card-border: var(--ng-border);
+  --ng-menu-image-size: 5.5rem;
+  --ng-menu-image-ratio: 1 / 1;
+  --ng-menu-image-radius: calc(var(--ng-radius) * 0.75);
+  --ng-menu-title-size: 1rem;
+  --ng-menu-title-weight: 600;
+  --ng-menu-price-size: 1rem;
+  --ng-menu-price-weight: 600;
+  --ng-menu-price-color: inherit;
+  --ng-menu-description-size: 0.9rem;
+  --ng-menu-description-color: var(--ng-muted);
+  --ng-menu-badge-bg: var(--ng-badge-bg);
+  --ng-menu-badge-color: var(--ng-badge-color);
+  --ng-menu-badge-radius: var(--ng-badge-radius);
+  --ng-menu-soldout-opacity: 0.55;
+  --ng-menu-soldout-decoration: line-through;
+  --ng-menu-section-size: 1.15rem;
+  --ng-menu-detail-image-ratio: 16 / 9;
+}
+.ng-list--menu, .ng-list--menu-compact { gap: var(--ng-menu-gap); }
+.ng-list--menu .ng-item, .ng-list--menu-compact .ng-item { padding: var(--ng-menu-card-padding); border: 1px solid var(--ng-menu-card-border); border-radius: var(--ng-menu-card-radius); background: var(--ng-menu-card-bg); }
+.ng-list--menu .ng-item-card, .ng-list--menu-compact .ng-item-card {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'title price' 'badges badges' 'body body'; gap: 0.2rem 0.75rem; align-items: start;
+}
+.ng-list--menu .ng-item-card { grid-template-columns: var(--ng-menu-image-size) 1fr auto; grid-template-areas: 'image title price' 'image badges badges' 'image body body'; }
+.ng-list--menu .ng-item-card:not(:has(.ng-item-image)) { grid-template-columns: 1fr auto; grid-template-areas: 'title price' 'badges badges' 'body body'; }
+.ng-list--menu .ng-item-image { grid-area: image; width: var(--ng-menu-image-size); aspect-ratio: var(--ng-menu-image-ratio); height: auto; border-radius: var(--ng-menu-image-radius); }
+.ng-list--menu-compact .ng-item-image { display: none; }
+.ng-list--menu .ng-item-title, .ng-list--menu-compact .ng-item-title { grid-area: title; font-size: var(--ng-menu-title-size); font-weight: var(--ng-menu-title-weight); }
+.ng-list--menu .ng-item-value, .ng-list--menu-compact .ng-item-value { grid-area: price; font-size: var(--ng-menu-price-size); font-weight: var(--ng-menu-price-weight); color: var(--ng-menu-price-color); }
+.ng-list--menu .ng-item-badges, .ng-list--menu-compact .ng-item-badges { grid-area: badges; }
+.ng-list--menu .ng-item-badge, .ng-list--menu-compact .ng-item-badge { background: var(--ng-menu-badge-bg); color: var(--ng-menu-badge-color); border-radius: var(--ng-menu-badge-radius); }
+.ng-list--menu .ng-item-body, .ng-list--menu-compact .ng-item-body { grid-area: body; font-size: var(--ng-menu-description-size); color: var(--ng-menu-description-color); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ng-list--menu .ng-item-more .ng-item-body, .ng-list--menu-compact .ng-item-more .ng-item-body { display: block; }
+.ng-list--menu .ng-item-detail-image, .ng-list--menu-compact .ng-item-detail-image { aspect-ratio: var(--ng-menu-detail-image-ratio); }
+.ng-list--menu .ng-item--unavailable .ng-item-card, .ng-list--menu-compact .ng-item--unavailable .ng-item-card { opacity: var(--ng-menu-soldout-opacity); }
+.ng-list--menu .ng-item--unavailable .ng-item-title, .ng-list--menu .ng-item--unavailable .ng-item-value, .ng-list--menu-compact .ng-item--unavailable .ng-item-title, .ng-list--menu-compact .ng-item--unavailable .ng-item-value { text-decoration: var(--ng-menu-soldout-decoration); }
+.ng-section:has(> .ng-list--menu) > .ng-section-head .ng-section-title, .ng-section:has(> .ng-list--menu-compact) > .ng-section-head .ng-section-title { font-size: var(--ng-menu-section-size); }

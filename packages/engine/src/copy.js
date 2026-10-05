@@ -26,6 +26,28 @@ export const DEFAULT_COPY = {
   hoursAgo: '{n}h ago',
   yes: 'Yes',
   no: 'No',
+  // Templates (views/*.js)
+  call: 'Call',
+  sms: 'Text',
+  email: 'Email',
+  website: 'Website',
+  book: 'Book',
+  directions: 'Directions',
+  soldOut: 'Sold out',
+  markSoldOut: 'Mark sold out',
+  markAvailable: 'Mark available',
+  setCover: 'Make cover',
+  cover: 'Cover',
+  show: 'Show',
+  hide: 'Hide',
+  priceUnit: '{price} {unit}',
+  upTo: 'Up to {n}',
+  all: 'All',
+  details: 'Details',
+  close: 'Close',
+  open: 'Open',
+  previous: 'Previous',
+  next: 'Next',
 }
 
 export function copyWith(overrides) {

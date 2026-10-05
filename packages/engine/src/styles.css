@@ -1,8 +1,20 @@
 /*
  * Optional starting styles for engine blocks. Screens are expected to draw
  * blocks in their own style; this file only makes them readable out of the
- * box. Every colour and size is a custom property a screen can override.
+ * box. Every colour and size is a custom property a screen can override. The
+ * defaults are neutral: the visual design is the owner's (SPEC §10).
+ *
+ * Layout: the common primitives here; each template (views/<name>.js) has its
+ * own sheet, views/<name>.css, with its own token prefix (--ng-<name>-*).
  */
+@import './views/profile.css';
+@import './views/actions.css';
+@import './views/social.css';
+@import './views/gallery.css';
+@import './views/menu.css';
+@import './views/listings.css';
+@import './views/availability.css';
+
 .ng-blocks {
   --ng-gap: 0.75rem;
   --ng-radius: 0.6rem;
@@ -11,15 +23,51 @@
   --ng-border: color-mix(in srgb, currentColor 15%, transparent);
   --ng-surface: color-mix(in srgb, currentColor 4%, transparent);
   --ng-accent: #3b5bdb;
+  --ng-accent-fg: #fff;
   --ng-danger: #c92a2a;
   --ng-success: #2b8a3e;
   --ng-warning: #e67700;
+  --ng-font: inherit;
+  --ng-badge-bg: var(--ng-surface);
+  --ng-badge-color: inherit;
+  --ng-badge-radius: 999px;
+  --ng-badge-size: 0.75rem;
+  /* nav (sticky category bar / filter) */
+  --ng-nav-gap: 0.4rem;
+  --ng-nav-top: 0;
+  --ng-nav-bg: Canvas;
+  --ng-nav-padding: 0.5rem 0;
+  --ng-nav-item-padding: 0.35rem 0.8rem;
+  --ng-nav-item-radius: 999px;
+  --ng-nav-item-bg: var(--ng-surface);
+  --ng-nav-item-color: inherit;
+  --ng-nav-item-active-bg: var(--ng-accent);
+  --ng-nav-item-active-color: var(--ng-accent-fg);
+  /* gallery block tokens (--ng-gallery-*) are declared by views/gallery.css; the rules below fall back without it */
+  /* calendar block (shared by availability and availability-calendar) */
+  --ng-calendar-gap: 0.25rem;
+  --ng-calendar-day-min: 4.5rem;
+  --ng-calendar-day-radius: calc(var(--ng-radius) / 2);
+  --ng-calendar-day-bg: transparent;
+  --ng-calendar-day-border: var(--ng-border);
+  --ng-calendar-today-border: var(--ng-accent);
+  --ng-calendar-busy-bg: var(--ng-surface);
+  --ng-calendar-entry-bg: var(--ng-accent);
+  --ng-calendar-entry-color: var(--ng-accent-fg);
+  --ng-calendar-entry-radius: 0.3rem;
+  --ng-calendar-label-size: 0.85rem;
+  --ng-calendar-weekday-color: var(--ng-muted);
+  /* item detail (menu / listings cards that open) */
+  --ng-detail-image-ratio: 16 / 9;
   display: grid;
   gap: var(--ng-gap);
   color: var(--ng-fg);
+  font: var(--ng-font);
 }
 .ng-section { display: grid; gap: var(--ng-gap); }
+.ng-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ng-gap); flex-wrap: wrap; }
 .ng-section-title { margin: 0; font-size: 1.05rem; }
+.ng-section-actions, .ng-item-actions, .ng-day-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .ng-text--muted, .ng-empty, .ng-help, .ng-item-meta, .ng-item-time, .ng-item-subtitle, .ng-item-body { color: var(--ng-muted); }
 .ng-text, .ng-notice, .ng-empty { margin: 0; }
 .ng-notice { padding: 0.5rem 0.75rem; border-radius: var(--ng-radius); background: var(--ng-surface); }
@@ -31,20 +79,33 @@
 .ng-images--strip { grid-auto-flow: column; grid-auto-columns: 11rem; overflow-x: auto; }
 .ng-item { display: grid; gap: 0.2rem; padding: 0.75rem; border: 1px solid var(--ng-border); border-radius: var(--ng-radius); }
 .ng-list--list .ng-item { border-width: 0 0 1px; border-radius: 0; }
-.ng-item-link { display: grid; gap: 0.2rem; color: inherit; text-decoration: none; }
+.ng-item-link, .ng-item-card { display: grid; gap: 0.2rem; color: inherit; text-decoration: none; }
 .ng-item-title { font-weight: 600; }
 .ng-item-value { font-variant-numeric: tabular-nums; font-weight: 600; }
-.ng-item-badge { justify-self: start; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--ng-surface); }
+.ng-item-badge { justify-self: start; font-size: var(--ng-badge-size); padding: 0.1rem 0.5rem; border-radius: var(--ng-badge-radius); background: var(--ng-badge-bg); color: var(--ng-badge-color); }
+.ng-item-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.ng-item--unavailable .ng-item-card { opacity: 0.55; }
+.ng-item--unavailable .ng-item-title, .ng-item--unavailable .ng-item-value { text-decoration: line-through; }
+.ng-item-detail > summary { list-style: none; cursor: pointer; }
+.ng-item-detail > summary::-webkit-details-marker { display: none; }
+.ng-item-more { display: grid; gap: 0.5rem; padding-top: 0.5rem; }
+.ng-item-detail-image { width: 100%; aspect-ratio: var(--ng-detail-image-ratio); object-fit: cover; border-radius: var(--ng-radius); }
+.ng-item-form { padding-top: 0.25rem; }
+.ng-item-form .ng-form { grid-template-columns: 1fr auto; align-items: end; }
 .ng-item-image, .ng-images img, .ng-image img { width: 100%; height: auto; border-radius: var(--ng-radius); object-fit: cover; }
 .ng-buttons { display: grid; gap: var(--ng-gap); }
 .ng-buttons--inline, .ng-buttons--icons { display: flex; flex-wrap: wrap; }
 .ng-buttons--grid { grid-template-columns: repeat(2, 1fr); }
 .ng-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.55rem 0.9rem; border-radius: var(--ng-radius); border: 1px solid var(--ng-border); background: transparent; color: inherit; font: inherit; text-decoration: none; cursor: pointer; }
-.ng-button--primary { background: var(--ng-accent); border-color: var(--ng-accent); color: #fff; }
+.ng-button--primary { background: var(--ng-accent); border-color: var(--ng-accent); color: var(--ng-accent-fg); }
 .ng-button--danger { color: var(--ng-danger); }
 .ng-button--ghost { border-color: transparent; }
-.ng-button:disabled { opacity: 0.5; cursor: default; }
+.ng-button:disabled, .ng-button[aria-disabled='true'] { opacity: 0.5; cursor: default; }
 .ng-buttons--icons .ng-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* An icon-style button shows its key's glyph from the owner's stylesheet:
+   .ng-key-call::before { content: ... } — the engine ships none. */
+.ng-buttons--icons .ng-button::before { content: var(--ng-icon, ''); }
+.ng-buttons--icons .ng-button { min-width: 2.5rem; min-height: 2.5rem; padding: 0.4rem; }
 .ng-note { font-size: 0.8rem; opacity: 0.8; }
 .ng-table { width: 100%; border-collapse: collapse; }
 .ng-table th, .ng-table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--ng-border); }
@@ -57,5 +118,53 @@
 .ng-form-actions { display: flex; gap: 0.5rem; }
 .ng-details details { padding: 0.6rem 0; border-bottom: 1px solid var(--ng-border); }
 .ng-details summary { cursor: pointer; font-weight: 500; }
+.ng-details--list { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+.ng-details--list dt { color: var(--ng-muted); }
+.ng-details--list dd { margin: 0; }
 .ng-embed { aspect-ratio: 16 / 9; }
 .ng-embed iframe { width: 100%; height: 100%; border: 0; border-radius: var(--ng-radius); }
+
+/* nav: a horizontal, scrollable, sticky row of categories or filters */
+.ng-nav { position: sticky; top: var(--ng-nav-top); z-index: 1; display: flex; gap: var(--ng-nav-gap); overflow-x: auto; padding: var(--ng-nav-padding); background: var(--ng-nav-bg); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.ng-nav::-webkit-scrollbar { display: none; }
+.ng-nav-item { flex: 0 0 auto; padding: var(--ng-nav-item-padding); border-radius: var(--ng-nav-item-radius); border: 0; background: var(--ng-nav-item-bg); color: var(--ng-nav-item-color); font: inherit; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.ng-nav-item--active { background: var(--ng-nav-item-active-bg); color: var(--ng-nav-item-active-color); }
+.ng-section[id] { scroll-margin-top: 3.5rem; }
+
+/* gallery block + lightbox (:target in static HTML, state in React); tokens in views/gallery.css */
+.ng-gallery { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ng-gallery-gap, var(--ng-gap)); grid-template-columns: repeat(auto-fill, minmax(var(--ng-gallery-min, 10rem), 1fr)); }
+.ng-gallery--carousel { grid-auto-flow: column; grid-auto-columns: var(--ng-gallery-carousel-width, 70vw); grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; }
+.ng-gallery--carousel .ng-gallery-item { scroll-snap-align: start; }
+.ng-gallery-item { display: grid; gap: 0.25rem; }
+.ng-gallery-item--cover { grid-column: 1 / -1; }
+.ng-gallery--carousel .ng-gallery-item--cover { grid-column: auto; }
+.ng-gallery-open { display: block; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: zoom-in; text-align: left; }
+.ng-gallery figure { margin: 0; display: grid; gap: 0.25rem; }
+.ng-gallery img { width: 100%; aspect-ratio: var(--ng-gallery-ratio, 1 / 1); object-fit: cover; border-radius: var(--ng-gallery-radius, var(--ng-radius)); }
+.ng-gallery figcaption, .ng-lightbox figcaption { font-size: var(--ng-gallery-caption-size, 0.85rem); color: var(--ng-gallery-caption-color, var(--ng-muted)); }
+.ng-lightbox { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; background: var(--ng-gallery-lightbox-bg, rgba(0, 0, 0, 0.9)); color: var(--ng-gallery-lightbox-color, #fff); }
+.ng-lightbox:target, .ng-lightbox--open { display: flex; }
+.ng-lightbox figure { margin: 0; max-width: 100%; max-height: 100%; display: grid; gap: 0.5rem; justify-items: center; }
+.ng-lightbox img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+.ng-lightbox figcaption { color: inherit; }
+.ng-lightbox-close, .ng-lightbox-prev, .ng-lightbox-next { color: inherit; background: none; border: 0; font: inherit; font-size: 2rem; line-height: 1; text-decoration: none; cursor: pointer; }
+.ng-lightbox-close { position: absolute; top: 0.5rem; right: 1rem; }
+.ng-lightbox-link { color: inherit; font-size: 0.85rem; }
+
+/* calendar block */
+.ng-calendar { display: grid; gap: var(--ng-calendar-gap); }
+.ng-calendar-title { margin: 0; font-weight: 600; }
+.ng-weekdays, .ng-days { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ng-calendar-gap); }
+.ng-calendar--month .ng-weekdays, .ng-calendar--month .ng-days, .ng-calendar--week .ng-weekdays, .ng-calendar--week .ng-days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ng-calendar--week .ng-weekdays { display: none; }
+.ng-weekday { font-size: var(--ng-calendar-label-size); color: var(--ng-calendar-weekday-color); text-align: center; }
+.ng-day { display: grid; align-content: start; gap: 0.2rem; min-height: var(--ng-calendar-day-min); padding: 0.3rem; border: 1px solid var(--ng-calendar-day-border); border-radius: var(--ng-calendar-day-radius); background: var(--ng-calendar-day-bg); }
+.ng-day--busy { background: var(--ng-calendar-busy-bg); }
+.ng-day--today { border-color: var(--ng-calendar-today-border); }
+.ng-day-label { font-size: var(--ng-calendar-label-size); }
+.ng-calendar--list .ng-day { grid-template-columns: max-content 1fr; align-items: start; border-width: 0 0 1px; border-radius: 0; padding: 0.5rem 0; min-height: 0; }
+.ng-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+.ng-entry { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; padding: 0.15rem 0.4rem; border-radius: var(--ng-calendar-entry-radius); background: var(--ng-calendar-entry-bg); color: var(--ng-calendar-entry-color); font-size: var(--ng-calendar-label-size); }
+.ng-entry-link { color: inherit; text-decoration: none; display: contents; }
+.ng-entry-time { font-variant-numeric: tabular-nums; }
+.ng-entry-capacity::before { content: '· '; }

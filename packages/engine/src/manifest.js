@@ -18,6 +18,7 @@
 // gcr-api-clean write resource:action (availability:read). The contract wins.
 
 import { SEMVER, prepareVersion } from './store-rules.js'
+import { templateSpecs, viewModule } from './views/index.js'
 
 export const SCHEMA_VERSION = 1
 export const ENGINE_RUNTIME = 'engine'
@@ -105,18 +106,41 @@ const COLUMN_FOR_FIELD = {
   number: ['number', 'integer'], money: ['money', 'number'], boolean: ['boolean'], date: ['date', 'timestamp'],
 }
 
-/** View types and the field slots each binds (see README "Views"). */
-export const VIEW_TYPES = {
+/**
+ * The core view types and the field slots each binds (see README "Views").
+ * `required` slots must be bound; `defaultSlot` falls back to the source's
+ * title when unbound; `slotTypes` pins a slot to a field type.
+ */
+export const CORE_VIEW_TYPES = {
   collection: { owner: true, slots: [] },
   settings: { owner: true, slots: [], noSource: true },
-  list: { slots: ['title', 'subtitle', 'body', 'image', 'value', 'badge', 'link'], multi: ['meta'], styles: ['list', 'cards', 'grid'] },
-  links: { slots: ['label', 'link', 'icon', 'emphasis', 'note'], styles: ['stack', 'inline', 'grid', 'icons'] },
-  images: { slots: ['image', 'caption', 'link'], styles: ['grid', 'strip', 'feature'] },
-  details: { slots: ['summary', 'body'], styles: ['accordion', 'list'] },
-  embed: { slots: ['link', 'title'], styles: ['feature', 'stack'] },
+  list: { slots: ['title', 'subtitle', 'body', 'image', 'value', 'badge', 'link'], multi: ['meta'], styles: ['list', 'cards', 'grid'], defaultSlot: 'title' },
+  links: { slots: ['label', 'link', 'icon', 'emphasis', 'note'], styles: ['stack', 'inline', 'grid', 'icons'], required: ['link'], defaultSlot: 'label' },
+  images: { slots: ['image', 'caption', 'link'], styles: ['grid', 'strip', 'feature'], required: ['image'] },
+  details: { slots: ['summary', 'body'], styles: ['accordion', 'list'], required: ['body'], defaultSlot: 'summary' },
+  embed: { slots: ['link', 'title'], styles: ['feature', 'stack'], required: ['link'] },
   form: { slots: [], writes: true, styles: ['stack', 'feature'] },
-  feed: { slots: ['title', 'subtitle', 'body'], styles: ['list', 'cards'] },
+  feed: { slots: ['title', 'subtitle', 'body'], styles: ['list', 'cards'], defaultSlot: 'title' },
   text: { slots: [], noSource: true },
+}
+
+/**
+ * Every view type: the core ones plus the templates registered in
+ * views/index.js (DECISIONS #51), read live so a template added or removed
+ * from the registry is accepted or refused without touching this file.
+ */
+export const VIEW_TYPES = new Proxy(CORE_VIEW_TYPES, {
+  get: (core, type) => (typeof type === 'string' && type in core ? core[type] : templateSpecs()[type]),
+  has: (core, type) => type in core || type in templateSpecs(),
+  ownKeys: (core) => [...Object.keys(core), ...Object.keys(templateSpecs())],
+  getOwnPropertyDescriptor: (core, type) => {
+    const value = type in core ? core[type] : templateSpecs()[type]
+    return value === undefined ? undefined : { value, enumerable: true, configurable: true, writable: false }
+  },
+})
+
+export function viewSpec(type) {
+  return VIEW_TYPES[type]
 }
 
 const TOP_LEVEL = [
@@ -697,7 +721,7 @@ function checkView(v, p, ctx) {
   const { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys, bindings } = ctx
   const { add, only, str, oneOf } = c
   if (!isObj(v)) return add(p, 'must be an object.')
-  const spec = VIEW_TYPES[v.type]
+  const spec = isStr(v.type) ? viewSpec(v.type) : undefined
   if (!spec) return add(`${p}.type`, `must be one of ${Object.keys(VIEW_TYPES).join(', ')}.`)
   only(v, ['type', 'source', 'heading', 'style', 'fields', 'submitLabel', 'intro', 'openWhen', 'text', 'closedText', 'emptyText'], p)
   str(v.heading, `${p}.heading`, { max: 80 })
@@ -744,19 +768,24 @@ function checkView(v, p, ctx) {
           const f = fields.find((x) => x.key === r)
           if (isPublic && f.ownerOnly) add(`${p}.fields.${slot}`, `"${r}" is owner-only and cannot be shown publicly.`)
           if (slot === 'icon' && f.type !== 'select') add(`${p}.fields.icon`, 'must name a select field (its options carry the icons).')
+          const want = spec.slotTypes?.[slot]
+          if (want && f.type !== want) add(`${p}.fields.${slot}`, `must name a ${want} field.`)
         }
       }
     }
   }
-  // Slots that fall back to the source's title when unbound (render.js).
-  const defaultSlot = { list: 'title', feed: 'title', links: 'label', details: 'summary' }[v.type]
+  // Slots that fall back to the source's title when unbound (render.js, views/*.js).
+  const defaultSlot = spec.defaultSlot
   if (isPublic && defaultSlot && !(isObj(v.fields) && v.fields[defaultSlot] !== undefined)) {
     const titleField = fields.find((x) => x.key === source.title)
     if (titleField && titleField.ownerOnly) add(`${p}.fields.${defaultSlot}`, `defaults to the source title "${source.title}", which is owner-only and cannot be shown publicly.`)
   }
-  for (const required of { links: ['link'], images: ['image'], details: ['body'], embed: ['link'] }[v.type] || []) {
+  for (const required of spec.required || []) {
     if (!isObj(v.fields) || !v.fields[required]) add(`${p}.fields.${required}`, `a ${v.type} view needs its ${required} field.`)
   }
+  // A template's own rules (views/<type>.js check).
+  const mod = spec.template ? viewModule(v.type) : null
+  if (mod?.check) mod.check(v, { fields, source, isPublic, add: (slot, message) => add(slot ? `${p}.fields.${slot}` : p, message) })
 
   // Who may read or write what.
   if (isPublic && source.from === 'app') {

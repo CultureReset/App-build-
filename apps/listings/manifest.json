@@ -36,80 +36,39 @@
       ]
     }
   ],
-  "permissions": [],
-  "data": {
-    "namespace": "listings",
-    "tables": {
-      "listings": {
-        "public": "read",
-        "columns": {
-          "title": {
-            "type": "text",
-            "required": true,
-            "max_length": 120
-          },
-          "location": {
-            "type": "text",
-            "max_length": 160
-          },
-          "price": {
-            "type": "money"
-          },
-          "status": {
-            "type": "text",
-            "required": true,
-            "default": "available"
-          },
-          "image_url": {
-            "type": "text"
-          },
-          "detail_one": {
-            "type": "text",
-            "max_length": 40
-          },
-          "detail_two": {
-            "type": "text",
-            "max_length": 40
-          },
-          "description": {
-            "type": "text",
-            "max_length": 800
-          },
-          "link_url": {
-            "type": "text"
-          },
-          "visible": {
-            "type": "boolean",
-            "default": true
-          },
-          "sort_order": {
-            "type": "integer"
-          }
-        }
-      }
-    }
-  },
-  "config": [
+  "permissions": [
     {
-      "key": "currency",
-      "label": "Currency",
-      "type": "text",
-      "help": "A currency code (USD, EUR) or the symbol to show before prices."
+      "id": "business:read",
+      "reason": "Shows the listings the business keeps, priced in its currency."
+    },
+    {
+      "id": "business:write",
+      "reason": "Lets the owner add and edit listings from inside this app."
     }
   ],
+  "bindings": {
+    "listings": {
+      "contract": "listings.items",
+      "access": "read-write"
+    },
+    "currency": {
+      "contract": "business.currency",
+      "access": "read"
+    }
+  },
   "pricing": {
     "model": "free"
   },
   "ui": {
     "format": {
       "currency": {
-        "setting": "currency"
+        "binding": "currency"
       }
     },
     "sources": {
       "listings": {
-        "from": "app",
-        "table": "listings",
+        "from": "business",
+        "binding": "listings",
         "label": "Listings",
         "labelSingular": "Listing",
         "fields": [
@@ -202,9 +161,6 @@
         {
           "type": "collection",
           "source": "listings"
-        },
-        {
-          "type": "settings"
         }
       ],
       "public": [

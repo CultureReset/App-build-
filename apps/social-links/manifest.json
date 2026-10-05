@@ -36,30 +36,20 @@
       ]
     }
   ],
-  "permissions": [],
-  "data": {
-    "namespace": "social_links",
-    "tables": {
-      "profiles": {
-        "public": "read",
-        "columns": {
-          "network": {
-            "type": "text",
-            "required": true
-          },
-          "url": {
-            "type": "text",
-            "required": true
-          },
-          "visible": {
-            "type": "boolean",
-            "default": true
-          },
-          "sort_order": {
-            "type": "integer"
-          }
-        }
-      }
+  "permissions": [
+    {
+      "id": "business:read",
+      "reason": "Shows the social profiles and links the business keeps."
+    },
+    {
+      "id": "business:write",
+      "reason": "Lets the owner add and reorder links from inside this app."
+    }
+  ],
+  "bindings": {
+    "links": {
+      "contract": "business.links",
+      "access": "read-write"
     }
   },
   "pricing": {
@@ -68,73 +58,18 @@
   "ui": {
     "sources": {
       "profiles": {
-        "from": "app",
-        "table": "profiles",
+        "from": "business",
+        "binding": "links",
         "label": "Profiles",
         "labelSingular": "Profile",
         "fields": [
           {
             "key": "network",
             "label": "Network",
-            "type": "select",
+            "type": "text",
             "required": true,
-            "options": [
-              {
-                "value": "instagram",
-                "label": "Instagram",
-                "icon": "IG"
-              },
-              {
-                "value": "facebook",
-                "label": "Facebook",
-                "icon": "f"
-              },
-              {
-                "value": "linkedin",
-                "label": "LinkedIn",
-                "icon": "in"
-              },
-              {
-                "value": "youtube",
-                "label": "YouTube",
-                "icon": "▶"
-              },
-              {
-                "value": "tiktok",
-                "label": "TikTok",
-                "icon": "♪"
-              },
-              {
-                "value": "x",
-                "label": "X",
-                "icon": "𝕏"
-              },
-              {
-                "value": "whatsapp",
-                "label": "WhatsApp",
-                "icon": "✆"
-              },
-              {
-                "value": "threads",
-                "label": "Threads",
-                "icon": "@"
-              },
-              {
-                "value": "pinterest",
-                "label": "Pinterest",
-                "icon": "P"
-              },
-              {
-                "value": "spotify",
-                "label": "Spotify",
-                "icon": "♫"
-              },
-              {
-                "value": "website",
-                "label": "Website",
-                "icon": "⌘"
-              }
-            ]
+            "maxLength": 40,
+            "help": "Instagram, Facebook, your website…"
           },
           {
             "key": "url",
@@ -170,7 +105,6 @@
           "style": "icons",
           "fields": {
             "label": "network",
-            "icon": "network",
             "link": "url"
           }
         }

@@ -161,7 +161,7 @@ export function engineManifestFromModule(m: ModuleManifest, identity: { publishe
   const sources: NonNullable<Manifest['ui']>['sources'] = {}
   const bindings: NonNullable<Manifest['bindings']> = {}
   for (const [key, b] of Object.entries(m.bindings ?? {})) {
-    bindings[key] = { contract: b.contract as NonNullable<Manifest['bindings']>[string]['contract'], access: b.access, ...(b.fieldMap ? { fieldMap: b.fieldMap } : {}) }
+    bindings[key] = { contract: b.contract as NonNullable<Manifest['bindings']>[string]['contract'], access: b.access, ...(b.fieldMap ? { fieldMap: b.fieldMap } : {}), ...(b.inbox ? { inbox: true } : {}) }
   }
   for (const [key, c] of Object.entries(m.collections)) {
     let source: NonNullable<Manifest['ui']>['sources'][string]

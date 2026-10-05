@@ -384,9 +384,14 @@ export function createPublicAdapter(config) {
     },
     async submit(manifest, key, values, { data } = {}) {
       const source = sourceOf(manifest, key)
-      if (source.from !== 'app') throw new AdapterError('Visitors can only add to an app’s own tables.')
-      const access = manifest?.data?.tables?.[source.table]?.public || 'none'
-      if (!access.includes('append')) throw new AdapterError('This form is not open to visitors.')
+      // A visitor writes into the app's own append table, or — through a
+      // read-write binding — into the business (a lead, a request). Either way
+      // the path names the source key; gcr-api-clean resolves it through the
+      // install's manifest and the install's permissions.
+      const binding = bindingOf(manifest, source)
+      if (source.from !== 'app' && !binding) throw new AdapterError('Visitors can only add to an app’s own tables.')
+      const access = binding ? binding.access : manifest?.data?.tables?.[source.table]?.public || 'none'
+      if (!(binding ? access === 'read-write' : access.includes('append'))) throw new AdapterError('This form is not open to visitors.')
       // Option sources a visitor may see all come back from one public read.
       let loaded = null
       const read = async (k) => {
@@ -395,7 +400,8 @@ export function createPublicAdapter(config) {
       }
       const checked = checkRecord(manifest, key, values, { visitor: true, data: await lookupData(source, values, data, read) })
       if (!checked.ok) throw new AdapterError('Some fields need attention.', { status: 422, errors: checked.errors })
-      return rowFrom(await request('POST', fill(routes.publicSubmit, { installId: config.installId, table: source.table }), { body: checked.data }))
+      const segment = binding ? key : source.table
+      return rowToFields(binding, rowFrom(await request('POST', fill(routes.publicSubmit, { installId: config.installId, table: segment }), { body: valuesToColumns(binding, checked.data) })))
     },
   }
   return pub

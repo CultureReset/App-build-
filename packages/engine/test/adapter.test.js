@@ -237,3 +237,20 @@ test('the public adapter carries the business values and maps bound rows to fiel
   assert.deepEqual(plain.data.groups, [{ id: 'f1', question: 'Why?' }])
   assert.deepEqual(plain.business, { currency: 'USD' })
 })
+
+test('a visitor may submit into a read-write bound source; the install resolves the binding server side', async () => {
+  const m = boundManifest()
+  m.permissions.push({ id: 'things:write', reason: 'dup guard' })
+  m.permissions = m.permissions.filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i)
+  m.ui.views.public.push({ type: 'form', source: 'groups' })
+  const fetch = fakeFetch(({ method, body }) => (method === 'GET' ? { body: { settings: {}, data: {} } } : { status: 201, body: { row: { id: 'f9', ...body } } }))
+  const pub = createPublicAdapter({ baseUrl: '/api', installId: 'i1', fetch })
+  const row = await pub.submit(m, 'groups', { name: 'Why?' })
+  const sent = fetch.calls.find((c) => c.method === 'POST')
+  assert.equal(sent.url, '/api/public/apps/i1/groups', 'the source key names the binding to resolve')
+  assert.deepEqual(sent.body, { question: 'Why?' }, 'written under the column name')
+  assert.equal(row.name, 'Why?')
+  const ro = boundManifest()
+  ro.bindings.faqs.access = 'read'
+  await assert.rejects(pub.submit(ro, 'groups', { name: 'x' }), /not open to visitors/)
+})

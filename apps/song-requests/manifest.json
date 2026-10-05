@@ -64,9 +64,15 @@
             "type": "text",
             "default": "pending"
           }
-        }
+        },
+        "inbox": true
       }
     }
+  },
+  "events": {
+    "emits": [
+      "song-requests.submitted"
+    ]
   },
   "config": [
     {

@@ -395,7 +395,7 @@ function checkData(data, { add, only, str, bool, oneOf, arr }) {
  * implied (write does not imply read, as in gcr-api-clean).
  */
 function checkBindings(m, c, declared) {
-  const { add, only, str, oneOf } = c
+  const { add, only, str, bool, oneOf } = c
   if (m.bindings === undefined) return {}
   if (!isObj(m.bindings)) {
     add('bindings', 'must be an object of key: { contract, access }.')
@@ -412,7 +412,9 @@ function checkBindings(m, c, declared) {
       add(p, 'must be { contract, access }.')
       continue
     }
-    only(b, ['contract', 'access', 'fieldMap'], p)
+    only(b, ['contract', 'access', 'fieldMap', 'inbox'], p)
+    bool(b.inbox, `${p}.inbox`)
+    if (b.inbox === true && b.access !== 'read-write') add(`${p}.inbox`, 'is only for a read-write binding (visitor submissions go through it).')
     const resource = resourceForContract(b.contract)
     if (str(b.contract, `${p}.contract`, { max: 80, pattern: DOTTED, required: true }) && !resource) {
       add(`${p}.contract`, `"${b.contract}" is not a contract family the platform serves (${Object.keys(CONTRACT_FAMILIES).join(', ')}).`)
@@ -838,6 +840,12 @@ export function inboxTables(manifest) {
   return Object.entries(tables)
     .filter(([, t]) => isObj(t) && (t.inbox === true || (t.inbox === undefined && isStr(t.public) && t.public.includes('append'))))
     .map(([name]) => name)
+}
+
+/** Bindings whose visitor submissions go to the owner's inbox (`inbox: true` on a read-write binding). */
+export function inboxBindings(manifest) {
+  const bindings = isObj(manifest?.bindings) ? manifest.bindings : {}
+  return Object.entries(bindings).filter(([, b]) => isObj(b) && b.inbox === true && b.access === 'read-write').map(([key]) => key)
 }
 
 /** The resources a manifest touches, from its permissions. */

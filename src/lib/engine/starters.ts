@@ -115,6 +115,7 @@ export function draftFromEngineManifest(manifest: Manifest): ModuleDraft {
     const write = permissions.find((p) => p.id.endsWith(':write') && resourceMatches(p.id, resource))
     const binding: ModuleBinding = { contract: b.contract, access: b.access }
     if (b.fieldMap) binding.fieldMap = b.fieldMap
+    if (b.inbox) binding.inbox = true
     if (read) binding.reason = read.reason
     if (b.access === 'read-write' && write) binding.write = strip({ reason: write.reason, optional: write.optional })
     bindings[key] = binding

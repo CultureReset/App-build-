@@ -199,6 +199,8 @@ export const bindingSchema = z.object({
   access: z.enum(['read', 'read-write']),
   /** Field key → the contract's column name, when they differ. */
   fieldMap: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), z.string().regex(/^[a-z][a-z0-9_]*$/)).optional(),
+  /** Visitor submissions through this (read-write) binding are also inbox messages. */
+  inbox: z.boolean().optional(),
   /** Why the app reads this (the `<resource>:read` permission's reason). */
   reason: z.string().min(8).max(200).optional(),
   /** Why, and whether optionally, the app writes it (the `<resource>:write` permission). */

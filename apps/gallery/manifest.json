@@ -36,33 +36,20 @@
       ]
     }
   ],
-  "permissions": [],
-  "data": {
-    "namespace": "gallery",
-    "tables": {
-      "photos": {
-        "public": "read",
-        "columns": {
-          "image_url": {
-            "type": "text",
-            "required": true
-          },
-          "caption": {
-            "type": "text",
-            "max_length": 120
-          },
-          "link_url": {
-            "type": "text"
-          },
-          "visible": {
-            "type": "boolean",
-            "default": true
-          },
-          "sort_order": {
-            "type": "integer"
-          }
-        }
-      }
+  "permissions": [
+    {
+      "id": "business:read",
+      "reason": "Shows the photos the business keeps."
+    },
+    {
+      "id": "business:write",
+      "reason": "Lets the owner add, caption and reorder photos from inside this app."
+    }
+  ],
+  "bindings": {
+    "media": {
+      "contract": "media.images",
+      "access": "read-write"
     }
   },
   "pricing": {
@@ -71,8 +58,8 @@
   "ui": {
     "sources": {
       "photos": {
-        "from": "app",
-        "table": "photos",
+        "from": "business",
+        "binding": "media",
         "label": "Photos",
         "labelSingular": "Photo",
         "fields": [

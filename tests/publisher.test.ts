@@ -32,11 +32,11 @@ test('the publisher key is the configured one, else the operator from the sessio
 })
 
 test('the same data model is tables and bindings, nothing else', () => {
-  const faq = shipped.find((s) => s.dir === 'faq')!.manifest
-  assert.equal(sameDataModel(faq, { ...faq, name: 'Renamed', version: '2.0.0', ui: undefined } as Manifest), true)
-  const widened = structuredClone(faq)
-  if (widened.data?.tables) Object.values(widened.data.tables)[0].columns.extra = { type: 'text' }
-  assert.equal(sameDataModel(faq, widened), false)
+  const songs = shipped.find((s) => s.dir === 'song-requests')!.manifest
+  assert.equal(sameDataModel(songs, { ...songs, name: 'Renamed', version: '2.0.0', ui: undefined } as Manifest), true)
+  const widened = structuredClone(songs)
+  Object.values(widened.data!.tables!)[0].columns.extra = { type: 'text' }
+  assert.equal(sameDataModel(songs, widened), false)
   const menu = shipped.find((s) => s.dir === 'qr-menu')!.manifest
   const rebound = structuredClone(menu)
   Object.values(rebound.bindings!)[0].access = 'read'

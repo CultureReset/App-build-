@@ -45,6 +45,10 @@
       "id": "menu:write",
       "reason": "Lets you edit menu items from inside this app.",
       "optional": true
+    },
+    {
+      "id": "business:read",
+      "reason": "Prices are shown in the currency the business set."
     }
   ],
   "bindings": {
@@ -55,15 +59,13 @@
     "menu_items": {
       "contract": "menu.items",
       "access": "read-write"
+    },
+    "currency": {
+      "contract": "business.currency",
+      "access": "read"
     }
   },
   "config": [
-    {
-      "key": "currency",
-      "label": "Currency",
-      "type": "text",
-      "help": "A currency code (USD, EUR) or the symbol to show before prices."
-    },
     {
       "key": "footer_note",
       "label": "Footer note",
@@ -77,7 +79,7 @@
   "ui": {
     "format": {
       "currency": {
-        "setting": "currency"
+        "binding": "currency"
       }
     },
     "sources": {

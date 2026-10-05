@@ -36,36 +36,27 @@
       ]
     }
   ],
-  "permissions": [],
-  "data": {
-    "namespace": "enquiries",
-    "tables": {
-      "enquiries": {
-        "public": "append",
-        "columns": {
-          "name": {
-            "type": "text",
-            "required": true,
-            "max_length": 80
-          },
-          "email": {
-            "type": "text",
-            "required": true
-          },
-          "phone": {
-            "type": "text"
-          },
-          "message": {
-            "type": "text",
-            "max_length": 800
-          },
-          "status": {
-            "type": "text",
-            "default": "new"
-          }
-        }
-      }
+  "permissions": [
+    {
+      "id": "business:read",
+      "reason": "Shows the enquiries the business has received."
+    },
+    {
+      "id": "business:write",
+      "reason": "Saves each enquiry a visitor sends as a lead of the business."
     }
+  ],
+  "bindings": {
+    "leads": {
+      "contract": "leads.items",
+      "access": "read-write",
+      "inbox": true
+    }
+  },
+  "events": {
+    "emits": [
+      "enquiry-form.submitted"
+    ]
   },
   "config": [
     {
@@ -86,8 +77,8 @@
   "ui": {
     "sources": {
       "enquiries": {
-        "from": "app",
-        "table": "enquiries",
+        "from": "business",
+        "binding": "leads",
         "label": "Enquiries",
         "labelSingular": "Enquiry",
         "fields": [

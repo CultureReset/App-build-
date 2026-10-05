@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -25,7 +25,7 @@ import { Blocks } from '@nextgent/app-engine/react'
  */
 const root = path.resolve(import.meta.dirname, '..')
 const appsDir = path.join(root, 'apps')
-const names = readdirSync(appsDir).filter((n) => !n.startsWith('.'))
+const names = readdirSync(appsDir).filter((n) => !n.startsWith('.') && statSync(path.join(appsDir, n)).isDirectory())
 const load = (name: string) => JSON.parse(readFileSync(path.join(appsDir, name, 'manifest.json'), 'utf8')) as Manifest
 
 function sampleValue(field: Field, i: number, data: Rows): unknown {

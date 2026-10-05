@@ -53,7 +53,7 @@ export type FormatRef = SettingRef | { binding: string }
 export type ContractFamily = 'menu' | 'booking' | 'availability' | 'reviews' | 'events' | 'media' | 'faqs' | 'leads' | 'customers' | 'business' | 'listings' | 'products'
 export type Contract = `${ContractFamily}.${string}`
 export type BindingAccess = 'read' | 'read-write'
-export interface Binding { contract: Contract; access: BindingAccess; fieldMap?: Record<string, string> }
+export interface Binding { contract: Contract; access: BindingAccess; fieldMap?: Record<string, string>; /** visitor submissions through this binding are inbox messages */ inbox?: boolean }
 export type ActionKind = 'read' | 'create' | 'update'
 export interface AgentAction { id: string; summary: string; kind: ActionKind; binding?: string; table?: string }
 
@@ -117,6 +117,7 @@ export declare function resourceForContract(contract: unknown): string | null
 export declare function bindingPermissions(manifest: Manifest): string[]
 export declare function sourceResource(manifest: Manifest, source: Source): string | null
 export declare function inboxTables(manifest: Manifest): string[]
+export declare function inboxBindings(manifest: Manifest): string[]
 
 export declare const SEMVER: RegExp
 export declare function prepareVersion(item: StoreItemRef, input: { semver: string; manifest?: object }): { ok: true; manifest: Manifest; permissions: string[] } | { ok: false; error: string }

@@ -60,7 +60,8 @@ test('the builder learns business sources: a bound collection becomes a from:bus
   assert.equal(bound.length, 2, 'both collections name their binding')
   const back = roundTrip(menu)
   for (const source of Object.values(back.ui!.sources)) assert.equal(source.from, 'business')
-  assert.deepEqual(back.permissions!.map((p) => p.id), ['menu:read', 'menu:write'])
+  assert.deepEqual(back.permissions!.map((p) => p.id), ['menu:read', 'menu:write', 'business:read'])
+  assert.deepEqual(back.ui!.format, { currency: { binding: 'currency' } }, 'prices in the business currency')
   assert.equal(back.data, undefined, 'no app table for business data')
 })
 

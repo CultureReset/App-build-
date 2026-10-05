@@ -47,6 +47,8 @@ app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
   A create or update through a binding needs `access: "read-write"`.
 - `data.tables.<name>.inbox` — `true` when a visitor's submission into that table is also a message for the
   owner's inbox (scoping §6). Defaults to true for any table that is public `append`; `inboxTables()` reads it.
+  A read-write binding takes the same flag (`bindings.<key>.inbox`, `inboxBindings()`) for submissions that go
+  into the business, such as a lead.
 - `events.emits` — the events the app's writes fire, namespaced `<app>.<event>` (DECISIONS #47).
 - `ui` — what the engine draws:
   - `ui.sources.<key>` — where rows come from. `from: "business"` names a binding (`binding: "menu"`), or —
@@ -165,7 +167,7 @@ const { settings, granted, data, errors } = await adapter.load(manifest, 'owner'
 | `GET /app-install` → `{ installId, itemKey, version, settings, granted }` | the install behind the token | yes |
 | `PUT /app-install/settings` `{ settings }` → `{ settings }` | saving settings (only `configKeys`) | yes |
 | `GET /public/apps/:installId` → `{ settings, data, business? }` | what a visitor may read (public views' sources only, bound sources resolved by gcr-api-clean; `business` carries format-binding values by key) | yes |
-| `POST /public/apps/:installId/:table` | a visitor's form, into a table declared public `append` | yes |
+| `POST /public/apps/:installId/:table` | a visitor's form, into a table declared public `append` — or, with a source key in place of the table, into the business through that source's read-write binding | yes (the binding form once gcr-api-clean resolves bindings) |
 
 Routes can be overridden (`routes: { … }`) if gcr-api-clean names them differently. A missing route
 shows as `err.notConnected` per source; it does not take the screen down.

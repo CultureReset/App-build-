@@ -36,32 +36,20 @@
       ]
     }
   ],
-  "permissions": [],
-  "data": {
-    "namespace": "faq",
-    "tables": {
-      "entries": {
-        "public": "read",
-        "columns": {
-          "question": {
-            "type": "text",
-            "required": true,
-            "max_length": 160
-          },
-          "answer": {
-            "type": "text",
-            "required": true,
-            "max_length": 1200
-          },
-          "visible": {
-            "type": "boolean",
-            "default": true
-          },
-          "sort_order": {
-            "type": "integer"
-          }
-        }
-      }
+  "permissions": [
+    {
+      "id": "business:read",
+      "reason": "Shows the questions and answers the business keeps."
+    },
+    {
+      "id": "business:write",
+      "reason": "Lets the owner edit the questions and answers from inside this app."
+    }
+  ],
+  "bindings": {
+    "faqs": {
+      "contract": "faqs.items",
+      "access": "read-write"
     }
   },
   "pricing": {
@@ -70,8 +58,8 @@
   "ui": {
     "sources": {
       "entries": {
-        "from": "app",
-        "table": "entries",
+        "from": "business",
+        "binding": "faqs",
         "label": "Questions",
         "labelSingular": "Question",
         "fields": [

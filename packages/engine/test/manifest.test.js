@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { validateManifest, parseManifest, permissionsOf, resourcesOf, resourceForContract, bindingPermissions, inboxTables, CONTRACTS } from '../src/index.js'
+import { validateManifest, parseManifest, permissionsOf, resourcesOf, resourceForContract, bindingPermissions, inboxTables, inboxBindings, CONTRACTS } from '../src/index.js'
 import { sampleManifest } from './fixtures.js'
 
 const errorsOf = (m, opts) => validateManifest(m, opts).errors.map((e) => `${e.path} ${e.message}`)
@@ -336,4 +336,13 @@ test('dotted names allow dashes inside segments (app events are <appKey>.<event>
   assert.equal(validateManifest(sampleManifest({ events: { emits: ['qr-menu.submitted'] } })).ok, true)
   assert.ok(has(sampleManifest({ events: { emits: ['Qr.menu'] } }), 'events.emits[0] must match'))
   assert.ok(has(sampleManifest({ events: { emits: ['-qr.menu'] } }), 'events.emits[0] must match'))
+})
+
+test('inbox: a read-write binding may flag its visitor submissions for the inbox', () => {
+  const m = boundManifest()
+  m.bindings.faqs.inbox = true
+  assert.deepEqual(validateManifest(m).errors, [])
+  assert.deepEqual(inboxBindings(m), ['faqs'])
+  m.bindings.currency.inbox = true
+  assert.ok(has(m, 'bindings.currency.inbox is only for a read-write binding'))
 })

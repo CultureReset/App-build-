@@ -10,7 +10,7 @@ const template = {
   surface: 'owner',
   summary: 'Listings as cards by kind: add, show or hide, reorder, edit, remove; filter by kind.',
   spec: {
-    slots: ['title', 'image', 'kind', 'price', 'unit', 'capacity', 'description'],
+    slots: ['title', 'image', 'kind', 'badges', 'price', 'unit', 'capacity', 'description'],
     defaultSlot: 'title',
   },
   tokens: ['--ng-listing-manager-gap', '--ng-listing-manager-min', '--ng-listing-manager-hidden-opacity', '--ng-listing-manager-actions-gap'],

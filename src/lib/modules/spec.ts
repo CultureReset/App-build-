@@ -25,6 +25,8 @@ export const fieldTypeSchema = z.enum([
   'url',
   'color',
   'image',
+  /** A list of short labels, typed as comma-separated text (the engine's `tags`). */
+  'tags',
 ])
 
 export type FieldType = z.infer<typeof fieldTypeSchema>

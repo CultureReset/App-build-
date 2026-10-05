@@ -135,8 +135,8 @@
           {
             "key": "tags",
             "label": "Badges",
-            "type": "text",
-            "maxLength": 120,
+            "type": "tags",
+            "maxLength": 24,
             "help": "Short labels shown on the item, separated by commas."
           },
           {

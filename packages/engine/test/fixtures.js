@@ -202,7 +202,7 @@ export function templatesManifest(overrides = {}) {
             { key: 'description', label: 'Description', type: 'longtext' },
             { key: 'price', label: 'Price', type: 'money', min: 0 },
             img('image_url'),
-            { key: 'tags', label: 'Tags', type: 'text' },
+            { key: 'tags', label: 'Tags', type: 'tags' },
             { key: 'section_id', label: 'Category', type: 'select', optionsFrom: { source: 'categories', label: 'section_name' } },
             { key: 'is_available', label: 'Available', type: 'boolean', default: true },
           ],

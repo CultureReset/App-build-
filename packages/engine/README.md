@@ -59,7 +59,8 @@ app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
     the older form — a gcr-api-clean section and the CONTRACT §6 resource it belongs to
     (`section: "menu_items", resource: "menu"`); `from: "app"` names a table in v1's `data.tables` (the
     app's own data space). Each source lists its `fields` (key, label, type, options or `optionsFrom`,
-    required, ownerOnly …) and which field is the `title`, `subtitle`, `group`, `order` (+ `sortable`)
+    required, ownerOnly …; a `tags` field is a list of short texts — read as an array or comma text,
+    edited as comma text, sent as an array, as gcr-api-clean's `menu.items.tags` is) and which field is the `title`, `subtitle`, `group`, `order` (+ `sortable`)
     and `visibleWhen` flag.
   - `ui.views.<set>` — an ordered list of views. Every `surfaces[]` entry's `path` is `/<set>`, so v1's
     surfaces stay valid: `kind: "dashboard"` / `"settings"` → the owner screen, `"public"` → the public
@@ -97,13 +98,13 @@ CSS custom properties (`--ng-<name>-*`, listed in `module.tokens` and `views/<na
 | `actions` | public | phone, sms, email, link, book, directions (at least one) | buttons, icons, grid, stack | a `buttons` row, each button keyed (`.ng-key-call` …) so a stylesheet can give it an icon |
 | `social` | public | label (defaults to title), **link** | icons, inline, stack, grid | a `buttons` row keyed by a slug of each label (`.ng-key-<slug>`) |
 | `gallery` | public | **image**, caption, cover (boolean), link | grid, carousel | a `gallery` block, cover first, lightbox |
-| `menu` | public | title, description, price, image, badges (a list or comma-separated text), available (boolean) | cards, rows | a sticky `nav` of the source's groups, a section per group, `list` style `menu` / `menu-compact`; items whose `available` is false stay, marked sold out, when that field is also the source's `visibleWhen` |
-| `listings` | public | title, image, kind, price, unit, capacity, description, link | grid, list | a `nav` filter over the kinds present, a section per kind, `list` style `listings` / `listings-rows`, each card opening a detail |
+| `menu` | public | title, description, price, image, badges (a `tags` field, or comma-separated text), available (boolean) | cards, rows | a sticky `nav` of the source's groups, a section per group, `list` style `menu` / `menu-compact`; items whose `available` is false stay, marked sold out, when that field is also the source's `visibleWhen` |
+| `listings` | public | title, image, kind, badges (a `tags` field), price, unit, capacity, description, link | grid, list | a `nav` filter over the kinds present, a section per kind, `list` style `listings` / `listings-rows`, each card opening a detail |
 | `availability` | public | **date** (a date field), end (date), time (time), status, capacity, title, link | list, month, week | a `calendar` block over the claims |
 | `profile-editor` | owner | — (every field of the single row) | — | one form (`record.update`, or `record.create` when there is no row); read-only values without write access |
 | `media-manager` | owner | **image**, caption, cover (boolean) | — | add, a `gallery` with move up/down, make cover (a quick `record.update`), edit, delete |
 | `menu-editor` | owner | title, price, available (boolean), image, description, badges | — | sections (the group source) with move/edit/delete, items with move, sold-out toggle, inline price form, edit, delete; add for both |
-| `listing-manager` | owner | title, image, kind, price, unit, capacity, description | — | a kind filter, cards with move, show/hide (the source's `visibleWhen`), edit, delete |
+| `listing-manager` | owner | title, image, kind, badges, price, unit, capacity, description | — | a kind filter, cards with move, show/hide (the source's `visibleWhen`), edit, delete |
 | `availability-calendar` | owner | **date**, end, time, status, capacity, title | month, week, list | a `calendar` with add on every day (the form opens with that date) and edit/delete on every claim |
 
 A template module exports `{ name, surface, summary, spec, tokens, check?, render, blocks? }` (see

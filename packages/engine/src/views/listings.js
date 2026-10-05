@@ -1,16 +1,16 @@
-// Template: listings — cards with image, title, kind badge, price per unit and
-// capacity, a filter by kind and a detail view. "Kind" is whatever the business
+// Template: listings — cards with image, title, kind badge, badges (a tags
+// field), price per unit and capacity, a filter by kind and a detail view. "Kind" is whatever the business
 // keeps in that field; the filter is built from the values present.
 
-import { display, fieldOf, groupedByValue, imageSlot, linkSlot, rowId, section, slot } from '../view-helpers.js'
+import { display, fieldOf, groupedByValue, imageSlot, linkSlot, listSlot, rowId, section, slot } from '../view-helpers.js'
 import { fill } from '../copy.js'
 
 const template = {
   name: 'listings',
   surface: 'public',
-  summary: 'Cards with image, title, kind badge, price per unit and capacity; filter by kind; a detail view.',
+  summary: 'Cards with image, title, kind badge, badges, price per unit and capacity; filter by kind; a detail view.',
   spec: {
-    slots: ['title', 'image', 'kind', 'price', 'unit', 'capacity', 'description', 'link'],
+    slots: ['title', 'image', 'kind', 'badges', 'price', 'unit', 'capacity', 'description', 'link'],
     defaultSlot: 'title',
     styles: ['grid', 'list'],
   },
@@ -33,6 +33,8 @@ export function listingBlocks(ctx, view, { sourceKey, source, rows, style, decor
     const item = { id: rowId(row, i), title: display(ctx, sourceKey, fieldOf(source, titleKey), row) }
     const kind = slot(ctx, sourceKey, source, view, 'kind', row)
     if (kind) item.badge = kind
+    const badges = listSlot(view, 'badges', row)
+    if (badges.length) item.badges = badges
     const price = slot(ctx, sourceKey, source, view, 'price', row)
     const unit = slot(ctx, sourceKey, source, view, 'unit', row)
     if (price) item.value = unit ? fill(ctx.copy.priceUnit, { price, unit }) : price

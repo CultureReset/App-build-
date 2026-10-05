@@ -12,7 +12,7 @@ export { SEMVER, prepareVersion, permissionIds, configKeys } from './store-rules
 export { BLOCK_TYPES, CORE_BLOCK_TYPES, ACTION_TYPES, BUTTON_STYLES, INPUT_TYPES, checkBlocks, walkBlocks } from './blocks.js'
 export { registerView, unregisterView, viewModule, viewModules, checkViewModule, templateSpecs } from './views/index.js'
 export { renderOwner, renderPublic, renderSurface, surfacesOf, sourcesFor, checkRecord, embedSrc } from './render.js'
-export { checkValues, blankValues, settingsWithDefaults, settingsFields, safeHref, safeImage, normaliseUrl } from './values.js'
+export { checkValues, blankValues, settingsWithDefaults, settingsFields, safeHref, safeImage, normaliseUrl, tagList } from './values.js'
 export { formatValue, formatMoney, optionList } from './format.js'
 export { DEFAULT_COPY } from './copy.js'
 export { createGcrAdapter, createPublicAdapter, AdapterError, DEFAULT_ROUTES, EXISTING_ROUTES } from './adapter.js'

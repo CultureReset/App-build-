@@ -56,7 +56,8 @@ function Button({ b, p, onAction, busy }) {
 
 function Field({ f, value, error, onChange, p, formId, disabled }) {
   const id = `${p}-${formId}-${f.key}`.replace(/[^A-Za-z0-9_-]/g, '-')
-  const shown = value === undefined || value === null ? '' : String(value)
+  // A tags list is edited as comma text (values.js tagList reads it back).
+  const shown = value === undefined || value === null ? '' : f.type === 'tags' && Array.isArray(value) ? value.join(', ') : String(value)
   const common = { id, name: f.key, required: Boolean(f.required), disabled }
   let control
   if (f.type === 'longtext') {

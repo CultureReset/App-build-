@@ -6,7 +6,7 @@
 // settings, data, actions, options, copy, format, lookupsBySource, now,
 // visitor (true on a public surface) and can(source) → { read, write }.
 
-import { blankValues, safeHref, safeImage } from './values.js'
+import { blankValues, safeHref, safeImage, tagList } from './values.js'
 import { formatValue, optionList, formatDate } from './format.js'
 import { fill } from './copy.js'
 
@@ -122,12 +122,9 @@ export function rawValue(view, name, row) {
   return key ? row[key] : undefined
 }
 
-/** A list of short texts from a slot: an array as stored, or comma-separated text. */
+/** A list of short texts from a slot (a `tags` field, or text): an array as stored, or comma-separated text. */
 export function listSlot(view, name, row) {
-  const v = rawValue(view, name, row)
-  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
-  if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean)
-  return []
+  return tagList(rawValue(view, name, row)) || []
 }
 
 export function imageSlot(view, name, row, alt) {

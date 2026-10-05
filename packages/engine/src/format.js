@@ -85,6 +85,8 @@ export function formatValue(field, value, ctx = {}) {
     }
     case 'date':
       return formatDate(value, ctx)
+    case 'tags':
+      return Array.isArray(value) ? value.map((t) => String(t).trim()).filter(Boolean).join(', ') : String(value)
     default:
       return String(value)
   }

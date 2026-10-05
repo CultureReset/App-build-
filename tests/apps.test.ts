@@ -45,6 +45,7 @@ function sampleValue(field: Field, i: number, data: Rows): unknown {
     case 'url':
     case 'image': return `https://media.example.test/${field.key}/${i}`
     case 'color': return '#336699'
+    case 'tags': return [`${field.label} ${i}`, 'Second']
     default: return `${field.label} ${i}`
   }
 }

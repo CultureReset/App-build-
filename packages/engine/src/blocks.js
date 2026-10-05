@@ -43,7 +43,7 @@ export const CALENDAR_STYLES = ['list', 'month', 'week']
 export const KEY = /^[a-z0-9][a-z0-9-]{0,39}$/
 export const INPUT_TYPES = [
   'text', 'longtext', 'number', 'money', 'boolean', 'select', 'date', 'time',
-  'email', 'phone', 'url', 'image', 'color', 'secret',
+  'email', 'phone', 'url', 'image', 'color', 'tags', 'secret',
 ]
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)

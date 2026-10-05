@@ -24,11 +24,11 @@ const ORDER_COLUMN = 'sort_order'
 
 const COLUMN: Record<ModuleField['type'], string> = {
   text: 'text', longtext: 'text', select: 'text', email: 'text', phone: 'text', url: 'text',
-  image: 'text', color: 'text', time: 'text', number: 'number', money: 'money', boolean: 'boolean', date: 'date',
+  image: 'text', color: 'text', time: 'text', tags: 'json', number: 'number', money: 'money', boolean: 'boolean', date: 'date',
 }
 
 const CONFIG: Record<ModuleField['type'], 'text' | 'number' | 'boolean' | 'select' | 'url'> = {
-  text: 'text', longtext: 'text', email: 'text', phone: 'text', color: 'text', date: 'text', time: 'text',
+  text: 'text', longtext: 'text', email: 'text', phone: 'text', color: 'text', date: 'text', time: 'text', tags: 'text',
   image: 'url', url: 'url', number: 'number', money: 'number', boolean: 'boolean', select: 'select',
 }
 

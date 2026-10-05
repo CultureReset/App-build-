@@ -6,6 +6,8 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 export type FieldType =
   | 'text' | 'longtext' | 'number' | 'money' | 'boolean' | 'select'
   | 'date' | 'time' | 'email' | 'phone' | 'url' | 'image' | 'color'
+  /** a list of short texts: read as an array or comma text, edited as comma text, sent as an array */
+  | 'tags'
 
 export interface FieldOption { value: string; label: string; icon?: string }
 
@@ -238,6 +240,7 @@ export declare function settingsFields(manifest: Manifest): (Field & { secret?: 
 export declare function safeHref(raw: unknown): string | null
 export declare function safeImage(raw: unknown): string | null
 export declare function normaliseUrl(raw: unknown): string | null
+export declare function tagList(raw: unknown): string[] | null
 export declare function formatValue(field: Field, value: unknown, ctx?: { currency?: string; locale?: string; lookups?: Record<string, FieldOption[]> }): string
 export declare function formatMoney(value: unknown, ctx?: { currency?: string; locale?: string }): string
 export declare function optionList(field: Field, lookups?: Record<string, FieldOption[]>): FieldOption[]

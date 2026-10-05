@@ -77,7 +77,8 @@ export function renderHtml(blocks, options = {}) {
     const id = `${prefix}-${escapeHtml(formId)}-${escapeHtml(f.key)}`.replace(/[^A-Za-z0-9_-]/g, '-')
     const name = escapeHtml(f.key)
     const req = f.required ? ' required' : ''
-    const v = value === undefined || value === null ? '' : value
+    // A tags list is edited as comma text (values.js tagList reads it back).
+    const v = value === undefined || value === null ? '' : f.type === 'tags' && Array.isArray(value) ? value.join(', ') : value
     let control
     if (f.type === 'longtext') {
       control = `<textarea id="${id}" name="${name}"${req}${f.maxLength ? ` maxlength="${Number(f.maxLength)}"` : ''}${f.placeholder ? ` placeholder="${escapeHtml(f.placeholder)}"` : ''}>${escapeHtml(v)}</textarea>`

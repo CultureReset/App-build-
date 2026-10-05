@@ -96,13 +96,13 @@ export function resourceForContract(contract) {
 /** Input types the engine can draw and check. */
 export const FIELD_TYPES = [
   'text', 'longtext', 'number', 'money', 'boolean', 'select',
-  'date', 'time', 'email', 'phone', 'url', 'image', 'color',
+  'date', 'time', 'email', 'phone', 'url', 'image', 'color', 'tags',
 ]
 
 /** Which storage column types each field type may sit on, for app-owned tables. */
 const COLUMN_FOR_FIELD = {
   text: ['text'], longtext: ['text'], select: ['text', 'integer', 'uuid'], email: ['text'], phone: ['text'],
-  url: ['text'], image: ['text'], color: ['text'], time: ['text'],
+  url: ['text'], image: ['text'], color: ['text'], time: ['text'], tags: ['json', 'text'],
   number: ['number', 'integer'], money: ['money', 'number'], boolean: ['boolean'], date: ['date', 'timestamp'],
 }
 

@@ -18,6 +18,7 @@ const TYPES: { value: ModuleField['type']; label: string; hint: string }[] = [
   { value: 'url', label: 'Link', hint: 'An http or https address' },
   { value: 'image', label: 'Image link', hint: 'A link to a hosted picture' },
   { value: 'color', label: 'Colour', hint: 'A colour picker' },
+  { value: 'tags', label: 'Tags', hint: 'Short labels, separated by commas' },
 ]
 
 /** Edits one declared field. What is set here becomes real inputs and real validation. */

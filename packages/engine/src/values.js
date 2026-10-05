@@ -8,6 +8,9 @@
 
 const MAX_TEXT = 400
 const MAX_LONGTEXT = 4000
+/** A `tags` field: each entry at most maxLength (default MAX_TAG), at most `max` entries (default MAX_TAGS). */
+const MAX_TAG = 40
+const MAX_TAGS = 20
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE = /^[+()\d\s.-]{5,24}$/
 const COLOR = /^#[0-9a-fA-F]{6}$/
@@ -31,6 +34,17 @@ export function normaliseUrl(raw) {
   } catch {
     return null
   }
+}
+
+/**
+ * A `tags` value as a list: an array as stored (gcr-api-clean serves a text[]
+ * column as one), or comma-separated text as typed. Entries are trimmed and
+ * empties dropped. Anything else is null: not a list.
+ */
+export function tagList(raw) {
+  if (Array.isArray(raw)) return raw.every((x) => typeof x === 'string' || typeof x === 'number') ? raw.map((x) => String(x).trim()).filter(Boolean) : null
+  if (typeof raw === 'string') return raw.split(',').map((x) => x.trim()).filter(Boolean)
+  return null
 }
 
 /** A link a visitor may follow: http(s), mailto, tel or sms. Anything else is dropped. */
@@ -62,7 +76,7 @@ function optionValues(field, lookups) {
 }
 
 function coerce(field, raw, lookups) {
-  const blank = raw === undefined || raw === null || (typeof raw === 'string' && raw.trim() === '')
+  const blank = raw === undefined || raw === null || (typeof raw === 'string' && raw.trim() === '') || (field.type === 'tags' && Array.isArray(raw) && tagList(raw)?.length === 0)
   if (blank) {
     if (field.required && field.type !== 'boolean') return { error: `${field.label} is required.` }
     return { value: field.type === 'boolean' ? false : null }
@@ -124,6 +138,17 @@ function coerce(field, raw, lookups) {
     case 'color': {
       const value = String(raw).trim()
       if (!COLOR.test(value)) return { error: `${field.label} must be a colour like #4d4de5.` }
+      return { value }
+    }
+    case 'tags': {
+      // Sent as a list: gcr-api-clean takes either shape and stores the array.
+      const value = tagList(raw)
+      if (!value) return { error: `${field.label} must be a list of short texts, or text separated by commas.` }
+      if (!value.length) return { value: null }
+      const each = Math.min(field.maxLength ?? MAX_TAG, MAX_TAG)
+      if (value.some((t) => t.length > each)) return { error: `${field.label} entries must be ${each} characters or fewer.` }
+      const count = Math.min(field.max ?? MAX_TAGS, MAX_TAGS)
+      if (value.length > count) return { error: `${field.label} takes at most ${count} entries.` }
       return { value }
     }
     default:

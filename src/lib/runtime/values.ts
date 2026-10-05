@@ -148,6 +148,23 @@ function coerce(field: ModuleField, raw: unknown): { value: FieldValue } | { err
 
       return { value }
     }
+
+    case 'tags': {
+      // A list of short labels, kept here as "a, b" text (this runtime's values
+      // are scalars); the engine's own records carry the array.
+      const list = Array.isArray(raw) ? raw.map((t) => String(t).trim()) : String(raw).split(',').map((t) => t.trim())
+      const value = list.filter(Boolean).join(', ')
+
+      if (!value) {
+        return { value: null }
+      }
+
+      if (value.length > textLimit(field)) {
+        return { error: `${field.label} must be ${textLimit(field)} characters or fewer.` }
+      }
+
+      return { value }
+    }
   }
 }
 

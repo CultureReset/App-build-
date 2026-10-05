@@ -33,16 +33,34 @@ screen action ──adapter──▶ gcr-api-clean /api/business/* · /api/app-d
 app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
 
 - `runtime: { "type": "engine", "engine": "1" }` — drawn by this package; nothing of the app runs anywhere.
+- `bindings` (DECISIONS #45) — the business data the app reads or writes, by data contract:
+  `{ "<key>": { "contract": "menu.items", "access": "read" | "read-write", "fieldMap"?: { "<field>": "<column>" } } }`.
+  A contract is a dotted name; its first segment is the family, and the family decides the CONTRACT §6
+  resource whose permission the app must declare with a reason: `menu.*` → `menu`, `booking.*` → `bookings`,
+  `availability.*` → `availability`, `reviews.*` → `reviews`, `events.*` → `events`, and `media.*`, `faqs.*`,
+  `leads.*`, `customers.*`, `business.*`, `listings.*`, `products.*` → `business` (`CONTRACT_FAMILIES`; the
+  same table lives in gcr-api-clean `lib/dataContracts.js`). `access: "read"` needs `<resource>:read`;
+  `"read-write"` needs `<resource>:write` as well — write never implies read. Apps use the contract's
+  column names unless the binding declares a `fieldMap`. `CONTRACTS` lists the names the platform serves.
+- `actions` (DECISIONS #46) — what an agent may do with the app through the business MCP:
+  `[{ "id", "summary", "kind": "read" | "create" | "update", "binding": "<key>" | "table": "<app table>" }]`.
+  A create or update through a binding needs `access: "read-write"`.
+- `data.tables.<name>.inbox` — `true` when a visitor's submission into that table is also a message for the
+  owner's inbox (scoping §6). Defaults to true for any table that is public `append`; `inboxTables()` reads it.
+- `events.emits` — the events the app's writes fire, namespaced `<app>.<event>` (DECISIONS #47).
 - `ui` — what the engine draws:
-  - `ui.sources.<key>` — where rows come from. `from: "business"` names a gcr-api-clean section and the
-    CONTRACT §6 resource it belongs to (`section: "menu_items", resource: "menu"`); `from: "app"` names a
-    table in v1's `data.tables` (the app's own data space). Each source lists its `fields` (key, label,
-    type, options or `optionsFrom`, required, ownerOnly …) and which field is the `title`, `subtitle`,
-    `group`, `order` (+ `sortable`) and `visibleWhen` flag.
+  - `ui.sources.<key>` — where rows come from. `from: "business"` names a binding (`binding: "menu"`), or —
+    the older form — a gcr-api-clean section and the CONTRACT §6 resource it belongs to
+    (`section: "menu_items", resource: "menu"`); `from: "app"` names a table in v1's `data.tables` (the
+    app's own data space). Each source lists its `fields` (key, label, type, options or `optionsFrom`,
+    required, ownerOnly …) and which field is the `title`, `subtitle`, `group`, `order` (+ `sortable`)
+    and `visibleWhen` flag.
   - `ui.views.<set>` — an ordered list of views. Every `surfaces[]` entry's `path` is `/<set>`, so v1's
     surfaces stay valid: `kind: "dashboard"` / `"settings"` → the owner screen, `"public"` → the public
     block, `"widget"` → a card (TV).
-  - `ui.format` — `currency` and `locale`, literal or `{ "setting": "<config key>" }`.
+  - `ui.format` — `currency` and `locale`: literal, `{ "setting": "<config key>" }`, or
+    `{ "binding": "<key>" }` where the key is a binding to a `business.*` contract (`business.currency`), so
+    the value is the business's own, read by the adapter and passed to the renderer as `options.business`.
 
 ### Views
 
@@ -62,13 +80,15 @@ app-manifest v1 (`cybercheck-cloud/contract/app-manifest.v1.json`) as is, plus:
 What the validator refuses, beyond v1: a view naming an unknown source, field or setting; an owner view
 on a public surface; an owner-only field bound on a public surface; a public view reading an app table
 that is not public `read`/`read-append`, or a form writing one that is not `append`; a business source
-without its `<resource>:read` permission, or a business write without `<resource>:write`; an app field
-on a column it does not declare or of an incompatible type; a select without options.
+without its `<resource>:read` permission, or a business write without `<resource>:write`; a binding whose
+contract family is unknown or whose implied permissions are not declared; a form or action writing through a
+read-only binding; an action naming an unknown binding or table; `inbox: true` on a table that is not public
+`append`; an app field on a column it does not declare or of an incompatible type; a select without options.
 
 ### Where this goes beyond app-manifest v1 (reported upstream)
 
 1. `runtime.type: "engine"` — v1's `runtime` is `oneOf hosted | service`.
-2. The `ui` section — v1 has `additionalProperties: false` at the top level.
+2. The `ui`, `bindings` and `actions` sections, and `data.tables.*.inbox` — v1 has `additionalProperties: false`.
 3. Permission ids: v1's pattern is dotted (`availability.read`); CONTRACT §6, Paperclip
    (`NEXTGENT_PERMISSION_PATTERN`) and gcr-api-clean write `resource:action`. The engine follows the
    contract and names the dotted form in its error. `surfaces[].requires_permission` likewise.

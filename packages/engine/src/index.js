@@ -4,7 +4,9 @@
 
 export {
   SCHEMA_VERSION, ENGINE_RUNTIME, PERMISSION, FIELD_TYPES, VIEW_TYPES, SURFACE_KINDS,
+  CONTRACT_FAMILIES, CONTRACTS, BINDING_ACCESS, ACTION_KINDS,
   validateManifest, parseManifest, permissionsOf, resourcesOf,
+  resourceForContract, bindingPermissions, sourceResource, inboxTables,
 } from './manifest.js'
 export { SEMVER, prepareVersion, permissionIds, configKeys } from './store-rules.js'
 export { BLOCK_TYPES, ACTION_TYPES, BUTTON_STYLES, INPUT_TYPES, checkBlocks, walkBlocks } from './blocks.js'

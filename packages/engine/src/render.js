@@ -20,6 +20,7 @@
 import { checkValues, blankValues, safeHref, safeImage, settingsFields, settingsWithDefaults } from './values.js'
 import { formatValue, optionList, relativeTime, resolveFormat } from './format.js'
 import { copyWith, fill } from './copy.js'
+import { sourceResource } from './manifest.js'
 
 const OWNER_KINDS = ['dashboard', 'settings']
 const PUBLIC_KINDS = ['public']
@@ -114,9 +115,12 @@ function settingText(ctx, ref) {
 /** What this viewer may do to a source's rows. */
 function abilities(ctx, source) {
   if (source.from === 'app') return { read: true, write: true }
+  const resource = sourceResource(ctx.manifest, source)
+  const binding = source.binding !== undefined ? ctx.manifest?.bindings?.[source.binding] : null
   return {
-    read: ctx.granted.has(`${source.resource}:read`),
-    write: ctx.granted.has(`${source.resource}:write`),
+    read: ctx.granted.has(`${resource}:read`),
+    // A read-only binding never writes, whatever the install was granted.
+    write: ctx.granted.has(`${resource}:write`) && !(binding && binding.access !== 'read-write'),
   }
 }
 
@@ -143,7 +147,7 @@ function collectionView(ctx, view) {
   const source = ctx.sources[view.source]
   const can = abilities(ctx, source)
   const title = view.heading || source.label
-  if (!can.read) return section(title, [{ type: 'notice', tone: 'warning', text: fill(ctx.copy.noAccess, { resource: source.resource }) }])
+  if (!can.read) return section(title, [{ type: 'notice', tone: 'warning', text: fill(ctx.copy.noAccess, { resource: sourceResource(ctx.manifest, source) }) }])
 
   const lookups = ctx.lookupsBySource[view.source]
   const rows = ordered(source, rowsOf(ctx, view.source))

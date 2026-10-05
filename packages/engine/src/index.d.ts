@@ -29,6 +29,9 @@ export interface Field {
 export interface Source {
   from: 'app' | 'business'
   table?: string
+  /** A business source resolved through `bindings` (DECISIONS #45) … */
+  binding?: string
+  /** … or, the older form, a gcr-api-clean section and its resource. */
   section?: string
   resource?: string
   label: string
@@ -44,6 +47,15 @@ export interface Source {
 }
 
 export type SettingRef = string | { setting: string }
+/** A format value: literal, an install setting, or read from the business through a `business.*` binding. */
+export type FormatRef = SettingRef | { binding: string }
+
+export type ContractFamily = 'menu' | 'booking' | 'availability' | 'reviews' | 'events' | 'media' | 'faqs' | 'leads' | 'customers' | 'business' | 'listings' | 'products'
+export type Contract = `${ContractFamily}.${string}`
+export type BindingAccess = 'read' | 'read-write'
+export interface Binding { contract: Contract; access: BindingAccess; fieldMap?: Record<string, string> }
+export type ActionKind = 'read' | 'create' | 'update'
+export interface AgentAction { id: string; summary: string; kind: ActionKind; binding?: string; table?: string }
 
 export interface View {
   type: 'collection' | 'settings' | 'list' | 'links' | 'images' | 'details' | 'embed' | 'form' | 'feed' | 'text'
@@ -75,11 +87,13 @@ export interface Manifest {
   surfaces?: { id: string; kind: 'dashboard' | 'settings' | 'public' | 'widget' | 'standalone'; path: string; title?: string; icon?: string; display_modes?: string[]; requires_permission?: string }[]
   permissions?: { id: string; reason: string; optional?: boolean }[]
   capabilities?: { provides?: { id: string; summary?: string; path?: string }[]; consumes?: string[] }
-  data?: { namespace: string; delete_on_uninstall?: boolean; tables?: Record<string, { columns: Record<string, { type: string; required?: boolean; default?: Json; max_length?: number }>; public?: 'none' | 'append' | 'read' | 'read-append'; indexes?: string[][] }> }
+  data?: { namespace: string; delete_on_uninstall?: boolean; tables?: Record<string, { columns: Record<string, { type: string; required?: boolean; default?: Json; max_length?: number }>; public?: 'none' | 'append' | 'read' | 'read-append'; indexes?: string[][]; inbox?: boolean }> }
   events?: { emits?: string[]; subscribes?: { event: string; path: string }[] }
   config?: { key: string; label: string; type: 'text' | 'number' | 'boolean' | 'select' | 'secret' | 'url'; required?: boolean; default?: Json; options?: string[]; help?: string }[]
   pricing?: { model: 'free' | 'flat' | 'usage'; amount?: number; currency?: string; interval?: 'month' | 'year' }
-  ui?: { sources: Record<string, Source>; views: Record<string, View[]>; format?: { currency?: SettingRef; locale?: SettingRef } }
+  ui?: { sources: Record<string, Source>; views: Record<string, View[]>; format?: { currency?: FormatRef; locale?: FormatRef } }
+  bindings?: Record<string, Binding>
+  actions?: AgentAction[]
 }
 
 export interface ValidationError { path: string; message: string }
@@ -91,10 +105,18 @@ export declare const PERMISSION: RegExp
 export declare const FIELD_TYPES: FieldType[]
 export declare const VIEW_TYPES: Record<string, { slots: string[]; multi?: string[]; styles?: string[]; owner?: boolean; writes?: boolean; noSource?: boolean }>
 export declare const SURFACE_KINDS: string[]
+export declare const CONTRACT_FAMILIES: Readonly<Record<ContractFamily, string>>
+export declare const CONTRACTS: readonly Contract[]
+export declare const BINDING_ACCESS: BindingAccess[]
+export declare const ACTION_KINDS: ActionKind[]
 export declare function validateManifest(input: unknown, options?: { item?: StoreItemRef; semver?: string }): { ok: boolean; errors: ValidationError[]; manifest: Manifest | null }
 export declare function parseManifest(input: unknown, options?: { item?: StoreItemRef; semver?: string }): Manifest
 export declare function permissionsOf(manifest: Manifest): { required: { id: string; reason: string }[]; optional: { id: string; reason: string }[] }
 export declare function resourcesOf(manifest: Manifest): string[]
+export declare function resourceForContract(contract: unknown): string | null
+export declare function bindingPermissions(manifest: Manifest): string[]
+export declare function sourceResource(manifest: Manifest, source: Source): string | null
+export declare function inboxTables(manifest: Manifest): string[]
 
 export declare const SEMVER: RegExp
 export declare function prepareVersion(item: StoreItemRef, input: { semver: string; manifest?: object }): { ok: true; manifest: Manifest; permissions: string[] } | { ok: false; error: string }
@@ -150,7 +172,7 @@ export interface ActionState {
   submitted?: Record<string, boolean>
 }
 export interface EmbedProvider { hosts: string[]; id?: { from: 'query' | 'path'; param?: string }; pattern?: string; src: string }
-export interface RenderOptions { copy?: Partial<typeof DEFAULT_COPY>; locale?: string; currency?: string; now?: number; embeds?: EmbedProvider[] }
+export interface RenderOptions { copy?: Partial<typeof DEFAULT_COPY>; locale?: string; currency?: string; now?: number; embeds?: EmbedProvider[]; /** values of format bindings, by binding key (from the adapter's load) */ business?: Record<string, string> }
 
 export declare function renderOwner(manifest: Manifest, settings: Record<string, unknown> | null | undefined, data: Rows | null | undefined, actions?: ActionState, options?: RenderOptions): Block[]
 export declare function renderPublic(manifest: Manifest, settings: Record<string, unknown> | null | undefined, data: Rows | null | undefined, actions?: ActionState, options?: RenderOptions): Block[]

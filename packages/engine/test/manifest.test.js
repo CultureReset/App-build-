@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { validateManifest, parseManifest, permissionsOf, resourcesOf } from '../src/index.js'
+import { validateManifest, parseManifest, permissionsOf, resourcesOf, resourceForContract, bindingPermissions, inboxTables, CONTRACTS } from '../src/index.js'
 import { sampleManifest } from './fixtures.js'
 
 const errorsOf = (m, opts) => validateManifest(m, opts).errors.map((e) => `${e.path} ${e.message}`)
@@ -208,4 +208,126 @@ test("v1: id follows Paperclip's item key rule (routes/store.ts itemKeySchema): 
     assert.ok(!has(sampleManifest({ id: good }), 'id must'), good)
   }
   assert.ok(has(sampleManifest({ requires: { apps: ['other.app'] } }), 'requires.apps[0] must match'))
+})
+
+/* ── bindings, actions, inbox (DECISIONS #45, #46, #47) ─────────────────── */
+
+function boundManifest() {
+  const m = sampleManifest()
+  m.permissions = [
+    { id: 'menu:read', reason: 'Shows the menu on the public page.' },
+    { id: 'menu:write', reason: 'Edits menu items from inside the app.', optional: true },
+    { id: 'business:read', reason: 'Reads the business currency and FAQs.' },
+    { id: 'business:write', reason: 'Edits the business FAQs.' },
+  ]
+  m.bindings = {
+    menu: { contract: 'menu.items', access: 'read-write' },
+    faqs: { contract: 'faqs.items', access: 'read-write', fieldMap: { question: 'q' } },
+    currency: { contract: 'business.currency', access: 'read' },
+  }
+  m.ui.format = { currency: { binding: 'currency' } }
+  m.ui.sources.groups = { from: 'business', binding: 'faqs', label: 'FAQs', labelSingular: 'FAQ', fields: [{ key: 'question', label: 'Question', type: 'text', required: true }], title: 'question' }
+  m.ui.sources.things = { from: 'business', binding: 'menu', label: 'Items', labelSingular: 'Item', fields: [{ key: 'item_name', label: 'Name', type: 'text', required: true }], title: 'item_name' }
+  m.ui.views.public[0] = { type: 'list', source: 'things', fields: { title: 'item_name' } }
+  m.actions = [
+    { id: 'list_items', summary: 'Lists the menu items the app shows.', binding: 'menu', kind: 'read' },
+    { id: 'add_note', summary: 'Adds a note for the owner.', table: 'notes', kind: 'create' },
+  ]
+  m.data.tables.notes.inbox = true
+  return m
+}
+
+test('bindings: a manifest bound to contracts validates, and the contract families are exported', () => {
+  const r = validateManifest(boundManifest())
+  assert.deepEqual(r.errors, [])
+  assert.deepEqual(resourceForContract('menu.items'), 'menu')
+  assert.deepEqual(resourceForContract('booking.records'), 'bookings')
+  assert.deepEqual(resourceForContract('faqs.items'), 'business')
+  assert.equal(resourceForContract('nothing.here'), null)
+  assert.ok(CONTRACTS.includes('menu.items') && CONTRACTS.includes('business.links'))
+  assert.deepEqual(bindingPermissions(boundManifest()), ['business:read', 'business:write', 'menu:read', 'menu:write'])
+})
+
+test('bindings: shape, known family, derived permissions must be declared', () => {
+  const bad = boundManifest()
+  bad.bindings.menu.access = 'write'
+  bad.bindings.odd = { contract: 'unknown.items', access: 'read' }
+  bad.bindings['Bad-Key'] = { contract: 'menu.items', access: 'read' }
+  bad.bindings.faqs.fieldMap.question = 'Not Snake'
+  const errs = errorsOf(bad)
+  assert.ok(errs.some((e) => e.includes('bindings.menu.access must be one of read, read-write')))
+  assert.ok(errs.some((e) => e.includes('bindings.odd.contract') && e.includes('unknown.items')))
+  assert.ok(errs.some((e) => e.includes('bindings.Bad-Key')))
+  assert.ok(errs.some((e) => e.includes('bindings.faqs.fieldMap.question')))
+  const missing = boundManifest()
+  missing.permissions = missing.permissions.filter((p) => p.id !== 'menu:write')
+  assert.ok(has(missing, 'bindings.menu reads and writes "menu.items", so permissions must declare "menu:write"'))
+  const noRead = boundManifest()
+  noRead.permissions = noRead.permissions.filter((p) => p.id !== 'business:read')
+  assert.ok(has(noRead, 'must declare "business:read"'))
+})
+
+test('bindings: a business source names a binding or a section, never both; writes need read-write', () => {
+  const both = boundManifest()
+  both.ui.sources.things.section = 'menu_items'
+  assert.ok(has(both, 'ui.sources.things names a binding, so it takes no section or resource'))
+  const unknown = boundManifest()
+  unknown.ui.sources.things.binding = 'nope'
+  assert.ok(has(unknown, 'names unknown binding "nope"'))
+  const ro = boundManifest()
+  ro.bindings.menu.access = 'read'
+  ro.permissions = ro.permissions.filter((p) => p.id !== 'menu:write')
+  ro.ui.views.public.push({ type: 'form', source: 'things' })
+  assert.ok(has(ro, 'writes through binding "menu", which is read only'))
+  // The old form still works.
+  assert.equal(validateManifest(sampleManifest()).ok, true)
+})
+
+test('actions: id, summary, binding or table, kind; writes need a writable target', () => {
+  const m = boundManifest()
+  m.actions.push({ id: 'list_items', summary: 'Duplicate id for the test.', binding: 'menu', kind: 'read' })
+  m.actions.push({ id: 'ghost', summary: 'Names nothing that exists.', binding: 'nope', kind: 'read' })
+  m.actions.push({ id: 'both', summary: 'Names a binding and a table.', binding: 'menu', table: 'notes', kind: 'read' })
+  m.actions.push({ id: 'ro', summary: 'Writes through a read-only binding.', binding: 'currency', kind: 'update' })
+  m.actions.push({ id: 'badkind', summary: 'Has a kind the engine does not know.', table: 'notes', kind: 'delete' })
+  m.actions.push({ id: 'short', summary: 'x', table: 'notes', kind: 'read' })
+  const errs = errorsOf(m)
+  assert.ok(errs.some((e) => e.includes('actions "list_items" is declared twice')))
+  assert.ok(errs.some((e) => e.includes('actions[3].binding names unknown binding "nope"')))
+  assert.ok(errs.some((e) => e.includes('actions[4] names a binding or a table, not both')))
+  assert.ok(errs.some((e) => e.includes('actions[5]') && e.includes('read only')))
+  assert.ok(errs.some((e) => e.includes('actions[6].kind must be one of read, create, update')))
+  assert.ok(errs.some((e) => e.includes('actions[7].summary must be at least 8')))
+  assert.ok(has(sampleManifest({ actions: {} }), 'actions must be a list'))
+})
+
+test('inbox: a flag on append tables, defaulting to true for public append', () => {
+  const m = sampleManifest()
+  m.data.tables.notes.inbox = 'yes'
+  assert.ok(has(m, 'data.tables.notes.inbox must be true or false'))
+  const closed = sampleManifest()
+  closed.data.tables.notes.public = 'read'
+  closed.data.tables.notes.inbox = true
+  assert.ok(has(closed, 'data.tables.notes.inbox takes visitor submissions, so the table must be public "append"'))
+  const byDefault = sampleManifest()
+  byDefault.data.tables.notes.public = 'append'
+  byDefault.data.tables.letters = { public: 'append', inbox: false, columns: { a: { type: 'text' } } }
+  byDefault.data.tables.secret = { columns: { a: { type: 'text' } } }
+  assert.deepEqual(inboxTables(byDefault), ['notes'])
+  assert.deepEqual(inboxTables(sampleManifest()), ['notes'], 'read-append is an append door too')
+})
+
+test('ui.format may read currency and locale from a binding', () => {
+  const m = boundManifest()
+  m.ui.format.currency = { binding: 'nope' }
+  assert.ok(has(m, 'ui.format.currency names unknown binding "nope"'))
+  const rw = boundManifest()
+  rw.ui.format.currency = { binding: 'menu' }
+  assert.ok(has(rw, 'ui.format.currency must name a binding to a business.* contract'))
+  assert.ok(has(sampleManifest({ ui: { ...sampleManifest().ui, format: { currency: { setting: 'currency', binding: 'x' } } } }), 'ui.format.currency'))
+})
+
+test('events are still validated', () => {
+  assert.ok(has(sampleManifest({ events: { emits: ['nodots'] } }), 'events.emits[0] must match'))
+  assert.equal(validateManifest(sampleManifest({ events: { emits: ['sample.note_added'] } })).ok, true)
 })

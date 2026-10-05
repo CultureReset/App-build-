@@ -200,3 +200,16 @@ test('checkRecord: text in a number or money field is refused, not read as 0', (
     assert.equal(r.data.count, want)
   }
 })
+
+test('a format binding takes its currency from the business values the adapter loaded', () => {
+  const m = sampleManifest()
+  m.permissions.push({ id: 'business:read', reason: 'Reads the business currency.' })
+  m.bindings = { currency: { contract: 'business.currency', access: 'read' } }
+  m.ui.format = { currency: { binding: 'currency' } }
+  const blocks = renderPublic(m, { currency: 'EUR' }, sampleData(), {}, { locale: 'en-US', business: { currency: 'GBP' } })
+  const text = JSON.stringify(blocks)
+  assert.ok(text.includes('£12.50'), 'the business currency wins over the install setting of the same name')
+  assert.ok(!text.includes('€12.50'))
+  const none = JSON.stringify(renderPublic(m, {}, sampleData(), {}, { locale: 'en-US' }))
+  assert.ok(none.includes('12.5'), 'no business value: the number alone')
+})

@@ -4,12 +4,13 @@
 
 /** ui.format.currency / .locale resolve to a literal or to a setting's value. */
 export function resolveFormat(manifest, settings, options = {}) {
+  const text = (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
   const pick = (ref) => {
     if (typeof ref === 'string') return ref
-    if (ref && typeof ref === 'object' && typeof ref.setting === 'string') {
-      const v = settings?.[ref.setting]
-      return typeof v === 'string' && v.trim() ? v.trim() : undefined
-    }
+    if (ref && typeof ref === 'object' && typeof ref.setting === 'string') return text(settings?.[ref.setting])
+    // { binding } reads the business: the adapter's load() puts each format
+    // binding's value under options.business[<binding key>].
+    if (ref && typeof ref === 'object' && typeof ref.binding === 'string') return text(options.business?.[ref.binding])
     return undefined
   }
   const fmt = manifest?.ui?.format || {}

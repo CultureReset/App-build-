@@ -48,6 +48,43 @@ export const TABLE_PUBLIC = ['none', 'append', 'read', 'read-append']
 export const CONFIG_TYPES = ['text', 'number', 'boolean', 'select', 'secret', 'url']
 export const PRICING_MODELS = ['free', 'flat', 'usage']
 export const INTERVALS = ['month', 'year']
+export const BINDING_ACCESS = ['read', 'read-write']
+export const ACTION_KINDS = ['read', 'create', 'update']
+
+/**
+ * Data contracts (DECISIONS #45): a dotted name whose first segment is the
+ * family, and the CONTRACT §6 resource each family's permission is checked
+ * against. This mirrors gcr-api-clean's registry (lib/dataContracts.js);
+ * the families are the contract's, so a new one is added in both places.
+ */
+export const CONTRACT_FAMILIES = Object.freeze({
+  menu: 'menu',
+  booking: 'bookings',
+  availability: 'availability',
+  reviews: 'reviews',
+  events: 'events',
+  media: 'business',
+  faqs: 'business',
+  leads: 'business',
+  customers: 'business',
+  business: 'business',
+  listings: 'business',
+  products: 'business',
+})
+
+/** The contract names the platform serves today (CONS §3–§5); a picker lists these. */
+export const CONTRACTS = Object.freeze([
+  'menu.items', 'menu.sections', 'media.images', 'faqs.items', 'leads.items', 'customers.items', 'listings.items',
+  'availability.claims', 'booking.records', 'reviews.items', 'events.items', 'products.items',
+  'business.links', 'business.profile', 'business.currency',
+])
+
+/** The resource a contract's permission names, or null when its family is unknown. */
+export function resourceForContract(contract) {
+  if (!isStr(contract)) return null
+  const family = contract.split('.')[0]
+  return CONTRACT_FAMILIES[family] || null
+}
 
 /** Input types the engine can draw and check. */
 export const FIELD_TYPES = [
@@ -79,7 +116,7 @@ export const VIEW_TYPES = {
 const TOP_LEVEL = [
   'schema_version', 'id', 'name', 'summary', 'description', 'version', 'publisher', 'homepage', 'icon',
   'categories', 'requires', 'runtime', 'surfaces', 'permissions', 'capabilities', 'data', 'events', 'config',
-  'pricing', 'ui',
+  'pricing', 'ui', 'bindings', 'actions',
 ]
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -313,7 +350,11 @@ function checkData(data, { add, only, str, bool, oneOf, arr }) {
       add(p, 'must be an object.')
       continue
     }
-    only(t, ['columns', 'public', 'indexes'], p)
+    only(t, ['columns', 'public', 'indexes', 'inbox'], p)
+    bool(t.inbox, `${p}.inbox`)
+    if (t.inbox === true && !(isStr(t.public) && t.public.includes('append'))) {
+      add(`${p}.inbox`, 'takes visitor submissions, so the table must be public "append".')
+    }
     if (!isObj(t.columns)) add(`${p}.columns`, 'is required.')
     else {
       const cols = Object.keys(t.columns)
@@ -342,6 +383,87 @@ function checkData(data, { add, only, str, bool, oneOf, arr }) {
       })
     }
   }
+}
+
+/* ── 2b. bindings and actions (extensions beyond v1, DECISIONS #45, #46) ─── */
+
+/**
+ * bindings.<key> = { contract, access, fieldMap? }. Each binding needs the
+ * permissions its contract's resource implies, declared with a reason like
+ * any other: <resource>:read, and <resource>:write for read-write. Nothing is
+ * implied (write does not imply read, as in gcr-api-clean).
+ */
+function checkBindings(m, c, declared) {
+  const { add, only, str, oneOf } = c
+  if (m.bindings === undefined) return {}
+  if (!isObj(m.bindings)) {
+    add('bindings', 'must be an object of key: { contract, access }.')
+    return {}
+  }
+  const keys = Object.keys(m.bindings)
+  if (keys.length > 24) add('bindings', 'must have at most 24 bindings.')
+  const out = {}
+  for (const key of keys) {
+    const p = `bindings.${key}`
+    if (!KEY.test(key) || key.length > 40) add(p, 'binding keys are snake_case, at most 40 characters.')
+    const b = m.bindings[key]
+    if (!isObj(b)) {
+      add(p, 'must be { contract, access }.')
+      continue
+    }
+    only(b, ['contract', 'access', 'fieldMap'], p)
+    const resource = resourceForContract(b.contract)
+    if (str(b.contract, `${p}.contract`, { max: 80, pattern: DOTTED, required: true }) && !resource) {
+      add(`${p}.contract`, `"${b.contract}" is not a contract family the platform serves (${Object.keys(CONTRACT_FAMILIES).join(', ')}).`)
+    }
+    if (b.access === undefined) add(`${p}.access`, 'is required.')
+    else oneOf(b.access, BINDING_ACCESS, `${p}.access`)
+    if (b.fieldMap !== undefined) {
+      if (!isObj(b.fieldMap)) add(`${p}.fieldMap`, 'must be an object of field key: column name.')
+      else {
+        for (const [field, column] of Object.entries(b.fieldMap)) {
+          if (!KEY.test(field) || !isStr(column) || !KEY.test(column)) add(`${p}.fieldMap.${field}`, 'maps a snake_case field key to a snake_case column name.')
+        }
+      }
+    }
+    if (resource) {
+      const verb = b.access === 'read-write' ? 'reads and writes' : 'reads'
+      if (!declared.has(`${resource}:read`)) add(p, `${verb} "${b.contract}", so permissions must declare "${resource}:read".`)
+      if (b.access === 'read-write' && !declared.has(`${resource}:write`)) add(p, `${verb} "${b.contract}", so permissions must declare "${resource}:write".`)
+    }
+    out[key] = { ...b, resource }
+  }
+  return out
+}
+
+/** actions[] = { id, summary, binding | table, kind }: what an agent may do through the business MCP. */
+function checkActions(m, c, bindings, tables) {
+  const { add, only, str, oneOf, arr } = c
+  if (m.actions === undefined) return
+  if (!arr(m.actions, 'actions', { max: 24 })) return
+  m.actions.forEach((a, i) => {
+    const p = `actions[${i}]`
+    if (!isObj(a)) return add(p, 'must be an object.')
+    only(a, ['id', 'summary', 'binding', 'table', 'kind'], p)
+    str(a.id, `${p}.id`, { max: 48, pattern: KEY, required: true })
+    str(a.summary, `${p}.summary`, { min: 8, max: 200, required: true })
+    if (a.kind === undefined) add(`${p}.kind`, 'is required.')
+    else oneOf(a.kind, ACTION_KINDS, `${p}.kind`)
+    const writes = a.kind === 'create' || a.kind === 'update'
+    if (a.binding !== undefined && a.table !== undefined) return add(p, 'names a binding or a table, not both.')
+    if (a.binding === undefined && a.table === undefined) return add(p, 'names a binding or a table.')
+    if (a.binding !== undefined) {
+      if (!str(a.binding, `${p}.binding`, { pattern: KEY })) return
+      const b = bindings[a.binding]
+      if (!b) return add(`${p}.binding`, `names unknown binding "${a.binding}".`)
+      if (writes && b.access !== 'read-write') add(p, `writes through binding "${a.binding}", which is read only.`)
+    } else if (str(a.table, `${p}.table`, { pattern: KEY }) && !tables[a.table]) {
+      add(`${p}.table`, `names table "${a.table}", which data.tables does not declare.`)
+    }
+  })
+  const ids = m.actions.filter(isObj).map((a) => a.id)
+  const dup = ids.find((id, i) => id && ids.indexOf(id) !== i)
+  if (dup) add('actions', `"${dup}" is declared twice.`)
 }
 
 /* ── 3. the engine section ──────────────────────────────────────────────── */
@@ -397,7 +519,7 @@ function checkField(f, p, c, source) {
   }
 }
 
-function checkEngine(m, c) {
+function checkEngine(m, c, bindings) {
   const { add, only, str, bool, oneOf } = c
   const engine = isObj(m.runtime) && m.runtime.type === ENGINE_RUNTIME
   if (!engine) {
@@ -420,13 +542,26 @@ function checkEngine(m, c) {
     only(v, ['setting'], p)
     if (!configKeys.has(v.setting)) add(p, `names unknown setting "${v.setting}".`)
   }
+  // A format value is text, a setting, or a read of the business (a business.* binding).
+  const formatRef = (v, p) => {
+    if (v === undefined || isStr(v)) return
+    if (isObj(v) && isStr(v.binding) && v.setting === undefined) {
+      only(v, ['binding'], p)
+      const b = bindings[v.binding]
+      if (!b) return add(p, `names unknown binding "${v.binding}".`)
+      if (!isStr(b.contract) || !b.contract.startsWith('business.')) add(p, 'must name a binding to a business.* contract.')
+      return
+    }
+    if (isObj(v) && v.binding !== undefined) return add(p, 'must be text, { setting: key } or { binding: key }.')
+    settingRef(v, p)
+  }
 
   if (ui.format !== undefined) {
     if (!isObj(ui.format)) add('ui.format', 'must be an object.')
     else {
       only(ui.format, ['currency', 'locale'], 'ui.format')
-      settingRef(ui.format.currency, 'ui.format.currency')
-      settingRef(ui.format.locale, 'ui.format.locale')
+      formatRef(ui.format.currency, 'ui.format.currency')
+      formatRef(ui.format.locale, 'ui.format.locale')
     }
   }
 
@@ -441,21 +576,27 @@ function checkEngine(m, c) {
       add(p, 'must be an object.')
       continue
     }
-    only(s, ['from', 'table', 'section', 'resource', 'label', 'labelSingular', 'fields', 'title', 'subtitle', 'group', 'order', 'sortable', 'visibleWhen', 'limit'], p)
+    only(s, ['from', 'table', 'section', 'resource', 'binding', 'label', 'labelSingular', 'fields', 'title', 'subtitle', 'group', 'order', 'sortable', 'visibleWhen', 'limit'], p)
     oneOf(s.from, ['app', 'business'], `${p}.from`)
     str(s.label, `${p}.label`, { min: 1, max: 60, required: true })
     str(s.labelSingular, `${p}.labelSingular`, { min: 1, max: 60, required: true })
     bool(s.sortable, `${p}.sortable`)
     if (s.limit !== undefined && !(Number.isInteger(s.limit) && s.limit > 0 && s.limit <= 500)) add(`${p}.limit`, 'must be a whole number from 1 to 500.')
     if (s.from === 'app') {
-      if (s.section !== undefined || s.resource !== undefined) add(p, 'an app source names a table, not a section or resource.')
+      if (s.section !== undefined || s.resource !== undefined || s.binding !== undefined) add(p, 'an app source names a table, not a section, resource or binding.')
       if (str(s.table, `${p}.table`, { pattern: KEY, required: true }) && !tables[s.table]) add(`${p}.table`, `names table "${s.table}", which data.tables does not declare.`)
     }
     if (s.from === 'business') {
-      if (s.table !== undefined) add(`${p}.table`, 'a business source names a section, not a table.')
-      str(s.section, `${p}.section`, { pattern: KEY, required: true })
-      if (str(s.resource, `${p}.resource`, { pattern: /^[a-z][a-z0-9_-]*$/, required: true }) && !declared.has(`${s.resource}:read`)) {
-        add(`${p}.resource`, `reads business data, so permissions must declare "${s.resource}:read".`)
+      if (s.table !== undefined) add(`${p}.table`, 'a business source names a binding or a section, not a table.')
+      if (s.binding !== undefined) {
+        // Resolved through bindings: the contract gives the resource (checked there).
+        if (s.section !== undefined || s.resource !== undefined) add(p, 'names a binding, so it takes no section or resource.')
+        if (str(s.binding, `${p}.binding`, { pattern: KEY }) && !bindings[s.binding]) add(`${p}.binding`, `names unknown binding "${s.binding}".`)
+      } else {
+        str(s.section, `${p}.section`, { pattern: KEY, required: true })
+        if (str(s.resource, `${p}.resource`, { pattern: /^[a-z][a-z0-9_-]*$/, required: true }) && !declared.has(`${s.resource}:read`)) {
+          add(`${p}.resource`, `reads business data, so permissions must declare "${s.resource}:read".`)
+        }
       }
     }
     if (!Array.isArray(s.fields) || s.fields.length < 1 || s.fields.length > 40) {
@@ -532,12 +673,12 @@ function checkEngine(m, c) {
     }
     // One public surface on a view set makes it public, whatever else points at it.
     const isPublic = Boolean(surfaceFor[name] && surfaceFor[name].some((s) => s.kind === 'public'))
-    list.forEach((v, i) => checkView(v, `${vp}[${i}]`, { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys }))
+    list.forEach((v, i) => checkView(v, `${vp}[${i}]`, { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys, bindings }))
   }
 }
 
 function checkView(v, p, ctx) {
-  const { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys } = ctx
+  const { c, sources, fieldsOf, tables, declared, isPublic, settingRef, configKeys, bindings } = ctx
   const { add, only, str, oneOf } = c
   if (!isObj(v)) return add(p, 'must be an object.')
   const spec = VIEW_TYPES[v.type]
@@ -607,8 +748,13 @@ function checkView(v, p, ctx) {
     if (spec.writes && !access.includes('append')) add(p, `writes to table "${source.table}", which is not public "append".`)
     if (!spec.writes && !access.startsWith('read')) add(p, `shows table "${source.table}", which is not public "read".`)
   }
-  if (spec.writes && source.from === 'business' && !declared.has(`${source.resource}:write`)) {
-    add(p, `writes business data, so permissions must declare "${source.resource}:write".`)
+  if (spec.writes && source.from === 'business') {
+    const binding = source.binding !== undefined ? bindings[source.binding] : null
+    if (binding) {
+      if (binding.access !== 'read-write') add(p, `writes through binding "${source.binding}", which is read only.`)
+    } else if (!declared.has(`${source.resource}:write`)) {
+      add(p, `writes business data, so permissions must declare "${source.resource}:write".`)
+    }
   }
 }
 
@@ -630,7 +776,11 @@ export function validateManifest(input, { item, semver } = {}) {
     manifest = prepared.manifest
   }
   checkV1(manifest, c)
-  checkEngine(manifest, c)
+  const permissions = Array.isArray(manifest.permissions) ? manifest.permissions.filter(isObj) : []
+  const declared = new Set(permissions.map((p) => p.id))
+  const bindings = checkBindings(manifest, c, declared)
+  checkActions(manifest, c, bindings, isObj(manifest.data) && isObj(manifest.data.tables) ? manifest.data.tables : {})
+  checkEngine(manifest, c, bindings)
   return { ok: c.errors.length === 0, errors: c.errors, manifest: c.errors.length ? null : manifest }
 }
 
@@ -651,6 +801,42 @@ export function permissionsOf(manifest) {
     required: list.filter((p) => !p.optional).map((p) => ({ id: p.id, reason: p.reason })),
     optional: list.filter((p) => p.optional).map((p) => ({ id: p.id, reason: p.reason })),
   }
+}
+
+/**
+ * The permissions a manifest's bindings imply (sorted, de-duplicated):
+ * <resource>:read for every binding, plus <resource>:write for read-write.
+ * The validator requires each to be declared with a reason.
+ */
+export function bindingPermissions(manifest) {
+  const bindings = isObj(manifest?.bindings) ? manifest.bindings : {}
+  const out = new Set()
+  for (const b of Object.values(bindings)) {
+    if (!isObj(b)) continue
+    const resource = resourceForContract(b.contract)
+    if (!resource) continue
+    out.add(`${resource}:read`)
+    if (b.access === 'read-write') out.add(`${resource}:write`)
+  }
+  return [...out].sort()
+}
+
+/** The resource a business source reads: from its binding's contract, or its own `resource`. */
+export function sourceResource(manifest, source) {
+  if (!isObj(source) || source.from !== 'business') return null
+  if (source.binding !== undefined) return resourceForContract(manifest?.bindings?.[source.binding]?.contract)
+  return isStr(source.resource) ? source.resource : null
+}
+
+/**
+ * App tables whose visitor submissions go to the owner's inbox (DECISIONS #47,
+ * scoping §6): `inbox: true`, or by default any table that is public append.
+ */
+export function inboxTables(manifest) {
+  const tables = isObj(manifest?.data) && isObj(manifest.data.tables) ? manifest.data.tables : {}
+  return Object.entries(tables)
+    .filter(([, t]) => isObj(t) && (t.inbox === true || (t.inbox === undefined && isStr(t.public) && t.public.includes('append'))))
+    .map(([name]) => name)
 }
 
 /** The resources a manifest touches, from its permissions. */

@@ -232,14 +232,14 @@ export function Blocks({ blocks, onAction, busy = false, prefix = 'ng', classNam
  * }} props
  */
 export function EngineApp({ manifest, surface = 'owner', adapter, options, prefix = 'ng', onError }) {
-  const [state, setState] = useState({ loading: true, settings: {}, granted: undefined, data: {}, loadError: null })
+  const [state, setState] = useState({ loading: true, settings: {}, granted: undefined, data: {}, business: {}, loadError: null })
   const [ui, setUi] = useState({ editing: null, values: {}, errors: {}, submitted: {} })
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
       const loaded = await adapter.load(manifest, surface)
-      setState({ loading: false, settings: loaded.settings || {}, granted: loaded.granted, data: loaded.data || {}, loadError: null })
+      setState({ loading: false, settings: loaded.settings || {}, granted: loaded.granted, data: loaded.data || {}, business: loaded.business || {}, loadError: null })
     } catch (err) {
       setState((s) => ({ ...s, loading: false, loadError: err }))
       onError?.(err)
@@ -252,9 +252,11 @@ export function EngineApp({ manifest, surface = 'owner', adapter, options, prefi
 
   const blocks = useMemo(() => {
     const actions = { granted: state.granted, ...ui }
-    if (surface === 'owner') return renderOwner(manifest, state.settings, state.data, actions, options)
-    if (surface === 'public') return renderPublic(manifest, state.settings, state.data, actions, options)
-    return renderSurface(manifest, surface, state.settings, state.data, actions, options)
+    // Values read from the business through format bindings (business.currency …) reach the renderer here.
+    const opts = { ...options, business: { ...(options?.business || {}), ...state.business } }
+    if (surface === 'owner') return renderOwner(manifest, state.settings, state.data, actions, opts)
+    if (surface === 'public') return renderPublic(manifest, state.settings, state.data, actions, opts)
+    return renderSurface(manifest, surface, state.settings, state.data, actions, opts)
   }, [manifest, surface, state, ui, options])
 
   const onAction = useCallback(
